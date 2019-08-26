@@ -6,6 +6,7 @@ Created on Sun Aug 25 13:41:09 2019
 """
 
 #import pandas as pd 
+import numpy as np 
 
 class Polymer():
     
@@ -26,9 +27,13 @@ class Polymer():
         self.dyeInt = list()
         self.dyeInt0 = 0.0
         
-        self.IN2 = 0.0
-        self.IO2 = 0.0
-        self.IAir = 0.0 
+        self.IN2 = list()
+        self.IO2 = list()
+        self.IAir = list()
+        
+        self.IN20 = 0.0
+        self.IO20 = 0.0
+        self.IAir0 = 0.0
         
         self.IN2_Air = list()
         self.IN2_O2 = list()
@@ -45,8 +50,8 @@ class Polymer():
         self.normN2O2STD = list()
         
     def updateRatios(self):
-        self.IN2_Air = self.IN2/self.IAir
-        self.IN2_O2 = self.IN2/self.IO2        
+        self.IN2_Air = list(np.array(self.IN2)/np.array(self.IAir))
+        self.IN2_O2 = list(np.array(self.IN2)/np.array(self.IO2))        
         
         
     

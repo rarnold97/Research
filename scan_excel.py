@@ -1,3 +1,6 @@
+''' TO DO:
+    Add another extraction layer to the intensity values, seemes to be one level to high
+'''
 import pandas as pd 
 import numpy as np 
 import matplotlib.pyplot as plt  
@@ -23,7 +26,8 @@ def Remove(duplicate):
             final_list.append(num) 
     return final_list
 
-fileName = 'Lifetime Spectrometer Data Aged and Unaged.xlsx'
+#fileName = 'Lifetime Spectrometer Data Aged and Unaged.xlsx'
+fileName = 'Photobleaching_test_refined.xlsx'
 
 xl = pd.ExcelFile(fileName)
 
@@ -31,7 +35,13 @@ sheetNames = xl.sheet_names
 
 badNames = ['Analysis','Analysis 2']
 
-Dye = 'Ru'
+Dyes = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
+
+dye_choice = 'Pd'
+
+analysisType  = {'photobleaching': 1, 'lifetime':2}
+
+key = 'photobleaching'
 
 allDataFrames = list()
 newShtNames = list()
@@ -85,103 +95,192 @@ for sht in sheetNames:
 allPolyNames = list()
 allGases = list()
 allVars = list()
+allTimes = list()
 
-srchWave = 0
+srchWave = Dyes[dye_choice]
 
-if ('Ru' in Dye):
-    srchWave = 604.49
-elif ('Pd' in Dye):
-    srchWave = 673.93
-elif ('Pt' in Dye):
-    srchWave = 652.35
+#create an empty dictionary for the lifetime portion of the experiment 
+expCollLifetime = {}
 
-#create an empty dictionary 
-expColl = {}
-
+Scaffolds_Photo = list()
 for shtData, shtName in zip(allDataFrames,newShtNames):
     
-    Scaffolds = list()
+    Scaffolds_Lifetime = list()
+    
     allColNames = shtData.columns.values.tolist()
     
     allPolyNames = list()
     allGases = list()
     allVars = list()
+    allTimes = list()
     
     for cols in allColNames:
-        allPolyNames.append(cols[0])
+        
+        if (analysisType[key] == 1): #photobleaching
+            allTimes.append(cols[0])
+        elif(analysisType[key] == 2): #lifetime experiments 
+            allPolyNames.append(cols[0])
+            #take unique names only 
+            allPolyNames = Remove(allPolyNames)            
+            
         allGases.append(cols[1])
         allVars.append(cols[2])
         
     #gather all unique values of polymer descriptions, which vary depending on the experiment 
-    allPolyNames = Remove(allPolyNames)
+    
     allGases = Remove(allGases)
     allVars = Remove(allVars)
     
-    #scaff stands for scaffold.  Some polymers may differ by dye composition, so scaffold is the correct unique term 
-    for scaffName in allPolyNames:
+    if (analysisType[key] ==1 ): #photobleaching experiment
         
-        scaffold = plymr.Polymer(scaffName)
+        scaffold = plymr.Polymer(shtName)
         
-        scaffData = shtData[scaffName]
-        
-        for gas in allGases:
+        for day in allTimes:
             
-            for var in allVars:
+            scaffold.Time.append(day)
+            scaffData = shtData[day]
+            
+            for gas in allGases:
                 
-                if ('air' in gas or 'Air' in gas):
+                for var in allVars:
+                    
+                    if ('air' in gas or 'Air' in gas):
+                    
+                        if ('lambda' in var or 'λ(nm)' in var):
+                            scaffold.LambdaAir.append( scaffData[gas][var].values )
+                            
+                            Filter = scaffData[gas][var] >= srchWave
+                            filterData = scaffData[gas].where(Filter)
+                            filterData.dropna(inplace=True)
+                            dataPair = filterData.values.tolist()[0]
+                            
+                            scaffold.IAir.append(dataPair[-1])
+                            
+                            if day == allTimes[0]:
+                                scaffold.IAir0 = dataPair[-1]
+                            
+                        elif ('I' in var or 'Intensity' in var):
+                            scaffold.IntensityAir.append(scaffData[gas][var].values)
+                        
+                    elif ('N2' in gas or 'n2' in gas):
+                        
+                        if ('lambda' in var or 'λ(nm)' in var):
+                            scaffold.LambdaN2.append(scaffData[gas][var].values)
+                            
+                            Filter = scaffData[gas][var] >= srchWave
+                            filterData = scaffData[gas].where(Filter)
+                            filterData.dropna(inplace=True)
+                            dataPair = filterData.values.tolist()[0]
+                            
+                            scaffold.IN2.append(dataPair[-1])
+                            
+                            if day == allTimes[0]:
+                                scaffold.IN20 = dataPair[-1]
+                            
+                        elif ('I' in var or 'Intensity' in var):                    
+                            scaffold.IntensityN2.append(scaffData[gas][var].values)
+                            
+                    elif('O2'in gas or 'o2' in gas):
+                        
+                        if ('lambda' in var or 'λ(nm)' in var):
+                            scaffold.LambdaO2.append(scaffData[gas][var].values)
+                            
+                            Filter = scaffData[gas][var] >= srchWave
+                            filterData = scaffData[gas].where(Filter)
+                            filterData.dropna(inplace=True)
+                            dataPair = filterData.values.tolist()[0]
+                            
+                            scaffold.IO2.append(dataPair[-1])
+                            
+                            if day == allTimes[0]:
+                                scaffold.IO20 = dataPair[-1]
+                            
+                        elif ('I' in var or 'Intensity' in var):        
+                            scaffold.IntensityO2.append(scaffData[gas][var].values)
+                            
+    #scaffold.updateRatios()
+        
+    #Scaffolds.append(scaffold)
+        
+            
+            
+    elif (analysisType[key]==2): #lifetime experiment
+        #scaff stands for scaffold.  Some polymers may differ by dye composition, so scaffold is the correct unique term 
+        for scaffName in allPolyNames:
+            
+            scaffold = plymr.Polymer(scaffName)
+            
+            scaffData = shtData[scaffName]
+            
+            for gas in allGases:
                 
-                    if ('lambda' in var or 'λ(nm)' in var):
-                        scaffold.LambdaAir.append( scaffData[gas][var].values )
-                        
-                        Filter = scaffData[gas][var] >= srchWave
-                        filterData = scaffData[gas].where(Filter)
-                        filterData.dropna(inplace=True)
-                        dataPair = filterData.values.tolist()[0]
-                        
-                        scaffold.IAir = dataPair[-1]
-                        
-                    elif ('I' in var or 'Intensity' in var):
-                        scaffold.IntensityAir.append(scaffData[gas][var].values)
+                for var in allVars:
                     
-                elif ('N2' in gas or 'n2' in gas):
+                    if ('air' in gas or 'Air' in gas):
                     
-                    if ('lambda' in var or 'λ(nm)' in var):
-                        scaffold.LambdaN2.append(scaffData[gas][var].values)
+                        if ('lambda' in var or 'λ(nm)' in var):
+                            scaffold.LambdaAir.append( scaffData[gas][var].values )
+                            
+                            Filter = scaffData[gas][var] >= srchWave
+                            filterData = scaffData[gas].where(Filter)
+                            filterData.dropna(inplace=True)
+                            dataPair = filterData.values.tolist()[0]
+
+                            scaffold.IAir.append( dataPair[-1] )
+
+                                
+                        elif ('I' in var or 'Intensity' in var):
+                            scaffold.IntensityAir.append(scaffData[gas][var].values)
                         
-                        Filter = scaffData[gas][var] >= srchWave
-                        filterData = scaffData[gas].where(Filter)
-                        filterData.dropna(inplace=True)
-                        dataPair = filterData.values.tolist()[0]
+                    elif ('N2' in gas or 'n2' in gas):
                         
-                        scaffold.IN2 = dataPair[-1]
+                        if ('lambda' in var or 'λ(nm)' in var):
+                            scaffold.LambdaN2.append(scaffData[gas][var].values)
+                            
+                            Filter = scaffData[gas][var] >= srchWave
+                            filterData = scaffData[gas].where(Filter)
+                            filterData.dropna(inplace=True)
+                            dataPair = filterData.values.tolist()[0]
+
+                            scaffold.IN2.append( dataPair[-1] )
+
+                            
+                        elif ('I' in var or 'Intensity' in var):                    
+                            scaffold.IntensityN2.append(scaffData[gas][var].values)
+                            
+                    elif('O2'in gas or 'o2' in gas):
                         
-                    elif ('I' in var or 'Intensity' in var):                    
-                        scaffold.IntensityN2.append(scaffData[gas][var].values)
-                        
-                elif('O2'in gas or 'o2' in gas):
-                    
-                    if ('lambda' in var or 'λ(nm)' in var):
-                        scaffold.LambdaO2.append(scaffData[gas][var].values)
-                        
-                        Filter = scaffData[gas][var] >= srchWave
-                        filterData = scaffData[gas].where(Filter)
-                        filterData.dropna(inplace=True)
-                        dataPair = filterData.values.tolist()[0]
-                        
-                        scaffold.IO2 = dataPair[-1]
-                        
-                    elif ('I' in var or 'Intensity' in var):        
-                        scaffold.IntensityO2.append(scaffData[gas][var].values)
-                        
-                        
+                        if ('lambda' in var or 'λ(nm)' in var):
+                            scaffold.LambdaO2.append(scaffData[gas][var].values)
+                            
+                            Filter = scaffData[gas][var] >= srchWave
+                            filterData = scaffData[gas].where(Filter)
+                            filterData.dropna(inplace=True)
+                            dataPair = filterData.values.tolist()[0]
+                            
+                            scaffold.IO2.append( dataPair[-1] )
+                            
+                        elif ('I' in var or 'Intensity' in var):        
+                            scaffold.IntensityO2.append(scaffData[gas][var].values)
+                            
+                            
+            scaffold.updateRatios()
+            
+            Scaffolds_Lifetime.append(scaffold)
+    
+            
+    if (analysisType[key] == 1):
+        #collect the photobleaching form of the data 
+        
         scaffold.updateRatios()
         
-        Scaffolds.append(scaffold)
-            
-    expColl[shtName] = Scaffolds
-    
+        Scaffolds_Photo.append(scaffold)
         
-        #Scaffolds.append(scaffold)
+        #Scaffolds.append(scaffold)       
+
+    elif (analysisType[key] == 2):
+        #collect the lifetime version of the data 
+        expCollLifetime[shtName] = Scaffolds_Lifetime
         
     
 
