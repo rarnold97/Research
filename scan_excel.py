@@ -27,7 +27,8 @@ def Remove(duplicate):
     return final_list
 
 #fileName = 'Lifetime Spectrometer Data Aged and Unaged.xlsx'
-fileName = 'Photobleaching_test_refined.xlsx'
+#fileName = 'Photobleaching_test_refined.xlsx'
+fileName = 'Photobleaching_test_refined.xlsm'
 
 xl = pd.ExcelFile(fileName)
 
@@ -96,6 +97,7 @@ allPolyNames = list()
 allGases = list()
 allVars = list()
 allTimes = list()
+basePoly = list()
 
 srchWave = Dyes[dye_choice]
 
@@ -103,6 +105,10 @@ srchWave = Dyes[dye_choice]
 expCollLifetime = {}
 
 Scaffolds_Photo = list()
+#buffer variable to evaulate wheter we are on the same polymer or not 
+samePoly = False
+
+
 for shtData, shtName in zip(allDataFrames,newShtNames):
     
     Scaffolds_Lifetime = list()
@@ -114,10 +120,17 @@ for shtData, shtName in zip(allDataFrames,newShtNames):
     allVars = list()
     allTimes = list()
     
+    AirCurveData = {}
+    O2CurveData = {}
+    N2CurveData = {}
+    
     for cols in allColNames:
         
         if (analysisType[key] == 1): #photobleaching
             allTimes.append(cols[0])
+            #keep only unique times
+            #THIS IS A NEW LINE CONSIDER DELETING
+            allTimes = Remove(allTimes)
         elif(analysisType[key] == 2): #lifetime experiments 
             allPolyNames.append(cols[0])
             #take unique names only 
@@ -126,81 +139,121 @@ for shtData, shtName in zip(allDataFrames,newShtNames):
         allGases.append(cols[1])
         allVars.append(cols[2])
         
+        
     #gather all unique values of polymer descriptions, which vary depending on the experiment 
     
+    if(analysisType[key] == 1): #this applies to the photobleaching experiment only 
+        basePoly.append(shtName.split(' ')[0])
+        
     allGases = Remove(allGases)
     allVars = Remove(allVars)
     
     if (analysisType[key] ==1 ): #photobleaching experiment
         
-        scaffold = plymr.Polymer(shtName)
+        curPoly = basePoly[-1]
+        fullPolyName = shtName
+        
+        for polyType in Scaffolds_Photo:
+            if curPoly in polyType.name:
+                scaffold = polyType
+                samePoly = True 
+                break
+            else:
+                samePoly = False
+        
+        if not samePoly:
+            scaffold = plymr.Polymer(basePoly[-1])
+
+        
+        scaffold.Aircurve.update({shtName:{}})
+        scaffold.O2curve.update({shtName:{}})
+        scaffold.N2curve.update({shtName:{}})
+        scaffold.Category.append(fullPolyName)
+        scaffold.IAir.update({shtName:list()})
+        scaffold.IN2.update({shtName:list()})
+        scaffold.IO2.update({shtName:list()})
+        scaffold.IAir0.update({shtName:0})
+        scaffold.IN20.update({shtName:0})
+        scaffold.IO20.update({shtName:0})
+        #sampleData.update({fullPolyname})
         
         for day in allTimes:
             
             scaffold.Time.append(day)
             scaffData = shtData[day]
             
+            
             for gas in allGases:
                 
                 for var in allVars:
                     
                     if ('air' in gas or 'Air' in gas):
+                        
+                        AirCurveData.update({day : scaffData[gas]})
                     
                         if ('lambda' in var or 'λ(nm)' in var):
-                            scaffold.LambdaAir.append( scaffData[gas][var].values )
+                            #scaffold.LambdaAir.append( scaffData[gas][var].values )
                             
                             Filter = scaffData[gas][var] >= srchWave
                             filterData = scaffData[gas].where(Filter)
                             filterData.dropna(inplace=True)
                             dataPair = filterData.values.tolist()[0]
                             
-                            scaffold.IAir.append(dataPair[-1])
+                            scaffold.IAir[shtName].append(dataPair[-1])
                             
                             if day == allTimes[0]:
-                                scaffold.IAir0 = dataPair[-1]
+                                scaffold.IAir0[shtName] = dataPair[-1]
                             
-                        elif ('I' in var or 'Intensity' in var):
-                            scaffold.IntensityAir.append(scaffData[gas][var].values)
+                        #elif ('I' in var or 'Intensity' in var):
+                            #scaffold.IntensityAir.append(scaffData[gas][var].values)
                         
                     elif ('N2' in gas or 'n2' in gas):
                         
+                        N2CurveData.update({day:scaffData[gas]})
+                        
                         if ('lambda' in var or 'λ(nm)' in var):
-                            scaffold.LambdaN2.append(scaffData[gas][var].values)
+                            #scaffold.LambdaN2.append(scaffData[gas][var].values)
                             
                             Filter = scaffData[gas][var] >= srchWave
                             filterData = scaffData[gas].where(Filter)
                             filterData.dropna(inplace=True)
                             dataPair = filterData.values.tolist()[0]
                             
-                            scaffold.IN2.append(dataPair[-1])
+                            scaffold.IN2[shtName].append(dataPair[-1])
                             
                             if day == allTimes[0]:
-                                scaffold.IN20 = dataPair[-1]
+                                scaffold.IN20[shtName] = dataPair[-1]
                             
-                        elif ('I' in var or 'Intensity' in var):                    
-                            scaffold.IntensityN2.append(scaffData[gas][var].values)
+                        #elif ('I' in var or 'Intensity' in var):                    
+                            #scaffold.IntensityN2.append(scaffData[gas][var].values)
                             
                     elif('O2'in gas or 'o2' in gas):
                         
+                        O2CurveData.update({day:scaffData[gas]})
+                        
                         if ('lambda' in var or 'λ(nm)' in var):
-                            scaffold.LambdaO2.append(scaffData[gas][var].values)
+                            #scaffold.LambdaO2.append(scaffData[gas][var].values)
                             
                             Filter = scaffData[gas][var] >= srchWave
                             filterData = scaffData[gas].where(Filter)
                             filterData.dropna(inplace=True)
                             dataPair = filterData.values.tolist()[0]
                             
-                            scaffold.IO2.append(dataPair[-1])
+                            scaffold.IO2[shtName].append(dataPair[-1])
                             
                             if day == allTimes[0]:
-                                scaffold.IO20 = dataPair[-1]
+                                scaffold.IO20[shtName] = dataPair[-1]
                             
-                        elif ('I' in var or 'Intensity' in var):        
-                            scaffold.IntensityO2.append(scaffData[gas][var].values)
+                        #elif ('I' in var or 'Intensity' in var):        
+                            #scaffold.IntensityO2.append(scaffData[gas][var].values)
                             
     #scaffold.updateRatios()
-        
-    #Scaffolds.append(scaffold)
+    
+    
+        scaffold.Aircurve[fullPolyName] = AirCurveData
+        scaffold.O2curve[fullPolyName] = O2CurveData
+        scaffold.N2curve[fullPolyName] = N2CurveData
+        Scaffolds_Photo.append(scaffold)
         
             
             
@@ -273,6 +326,8 @@ for shtData, shtName in zip(allDataFrames,newShtNames):
         #collect the photobleaching form of the data 
         
         scaffold.updateRatios()
+        
+        scaffold.updateSumStats()
         
         Scaffolds_Photo.append(scaffold)
         
