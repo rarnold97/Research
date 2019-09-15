@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1077</width>
-    <height>601</height>
+    <width>1165</width>
+    <height>568</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -198,29 +198,33 @@
       <layout class="QVBoxLayout" name="mplvl"/>
      </widget>
     </item>
-    <item row="0" column="2">
-     <widget class="QTreeView" name="mplfigs_treeView">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>200</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>300</width>
-        <height>16777215</height>
-       </size>
-      </property>
+    <item row="0" column="2" rowspan="2">
+     <widget class="QTreeWidget" name="sample_treeWidget">
+      <column>
+       <property name="text">
+        <string notr="true">1</string>
+       </property>
+      </column>
      </widget>
     </item>
     <item row="1" column="0">
+     <widget class="QGroupBox" name="groupBox_3">
+      <property name="font">
+       <font>
+        <pointsize>12</pointsize>
+       </font>
+      </property>
+      <property name="title">
+       <string>Select Experiment</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QComboBox" name="exp_comboBox"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="2" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QGroupBox" name="groupBox">
@@ -314,7 +318,7 @@
       </item>
      </layout>
     </item>
-    <item row="2" column="0" colspan="3">
+    <item row="3" column="0" colspan="2">
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="0">
        <widget class="QLabel" name="label">
@@ -412,7 +416,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1077</width>
+     <width>1165</width>
      <height>21</height>
     </rect>
    </property>
