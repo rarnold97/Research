@@ -10,17 +10,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #define the fit function templates
-def expSingle(x,a,b):
-    return a * np.exp(b*x)
+def expSingle(x,a,b,c):
+    return a*np.exp(-b*x) + c
 
-def expDecay(x,a,b):
-    return a* np.exp(-b*x) 
+def expDecay(x,a,b,c):
+    return a* np.exp(-b*x) +c
 
-def expDouble(x,a,b,d,e):
-    return a*np.exp(b*x) + d*np.exp(e*x)  
+def expDouble(x,a,b,d,e,c):
+    return a*np.exp(b*x) + d*np.exp(e*x) + c  
 
-def expDoubleDecay(x,a,b,d,e):
-    return a*np.exp(-b*x) + d*np.exp(-e*x)  
+def expDoubleDecay(x,a,b,d,e,c):
+    return a*np.exp(-b*x) + d*np.exp(-e*x)  + c 
 
 def logarithmic(x,a,b):
     return a + b*np.log(x)

@@ -4,6 +4,15 @@ Created on Thu Sep 12 13:10:02 2019
 
 @author: ryanm
 """
+
+"""
+To DO:
+    -add code that extrapolates the data to the peak value (add artificial wavelengths to the real data)
+    -investigate the more advanced fits 
+    -record fit value
+    -update ratios and statistics
+    -generate report plots 
+"""
 #custom imports
 import scan_excel as SE
 import fit_code as fit
@@ -98,6 +107,8 @@ class Main(QMainWindow, Ui_MainWindow):
         #assign what happens when the bounds are changed
         self.LB_lineEdit.textEdited.connect(self.lbEdit)
         self.RB_lineEdit.textEdited.connect(self.rbEdit)
+        #clear the fitted curve from plot
+        self.clearButton.clicked.connect(self.clearFit)
         #assign code to the curve fit push buttons 
         
         #polynomial
@@ -149,7 +160,7 @@ class Main(QMainWindow, Ui_MainWindow):
             ax.set_xlabel('Wavelength (nm)')
             ax.set_ylabel('Photon Counts')
             ax.set_title('Spectrometer Intensity Readings')
-            ax.legend()
+            ax.legend(loc='upper right')
             
             self.figKey = polyName + sample + daySelected
             self.changefig(self.figKey,fig)
@@ -179,7 +190,7 @@ class Main(QMainWindow, Ui_MainWindow):
                     ax.lines.remove(line)
                     break
             ax.plot(self.O2FitRange[colHeadersO2[0]],yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
-            ax.legend()
+            ax.legend(loc='upper right')
             #self.fig_dict[self.figKey] = fig
             self.changefig(self.figKey,fig)
         
@@ -309,6 +320,18 @@ class Main(QMainWindow, Ui_MainWindow):
         
         xlabelAir = self.AirData.columns.tolist()[0]
         self.AirFitRange = self.AirData[(self.AirData[xlabelAir]>=self.xrange[0])&(self.AirData[xlabelAir]<=self.xrange[1])]
+        
+    def clearFit(self):
+        if hasattr(self,'figKey'):
+            fig = self.fig_dict[self.figKey]
+            ax = fig.gca()
+            for line in ax.lines:
+                if 'Extrapolated Blue Light Curve' == line.get_label():
+                    ax.lines.remove(line)
+                    ax.legend(loc='upper right')
+                    self.changefig(self.figKey,fig)
+                    break
+            
         
         
         
