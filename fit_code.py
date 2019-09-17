@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 #define the fit function templates
 def expSingle(x,a,b,c):
-    return a*np.exp(-b*x) + c
+    return a*np.exp(b*x) + c
 
 def expDecay(x,a,b,c):
     return a* np.exp(-b*x) +c

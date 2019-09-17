@@ -12,12 +12,14 @@ To DO:
     -record fit value
     -update ratios and statistics
     -generate report plots 
+    -investigate odd behavior with exponentials
 """
 #custom imports
 import scan_excel as SE
 import fit_code as fit
 ##############################
 import numpy as np 
+import pandas as pd
 
 from PyQt5.uic import loadUiType
 
@@ -48,7 +50,10 @@ class Main(QMainWindow, Ui_MainWindow):
         self.polymerObjects ={}
         self.fitType = "expSingle"
         self.xrange = [550,620] #default value 
+        self.xrange2 = [720,800]
         self.currentFigKey = "" 
+        self.peakWave = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
+        self.method = 0 #0 for extrapolation, 1 for interpolation
     
         
         #define polynomial degree widget
@@ -101,12 +106,21 @@ class Main(QMainWindow, Ui_MainWindow):
         
         self.dye_comboBox.currentTextChanged.connect(self.setDye)
         
+        #connect toggle buttons with correct fitting method
+        self.method1_radioButton.toggled.connect(self.method1Toggle)
+        self.method1_radioButton.setChecked(True)
+        self.method2_radioButton.toggled.connect(self.method2Toggle)
+        
         #instruct code what to do when the user selects run 
         self.run_pushButton.clicked.connect(self.run)
         
         #assign what happens when the bounds are changed
         self.LB_lineEdit.textEdited.connect(self.lbEdit)
         self.RB_lineEdit.textEdited.connect(self.rbEdit)
+        
+        self.LB2_lineEdit.textEdited.connect(self.lb2Edit)
+        self.RB2_lineEdit.textEdited.connect(self.rb2Edit)
+        
         #clear the fitted curve from plot
         self.clearButton.clicked.connect(self.clearFit)
         #assign code to the curve fit push buttons 
@@ -123,6 +137,26 @@ class Main(QMainWindow, Ui_MainWindow):
         #exit()
         sys.exit()
         
+    def setFitRange(self):
+        xlabelN2 = self.N2Data.columns.tolist()[0]  
+        self.N2FitRange = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange[0])&(self.N2Data[xlabelN2]<=self.xrange[1])]            
+        
+        xlabelO2 = self.O2Data.columns.tolist()[0]
+        self.O2FitRange =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange[0])&(self.O2Data[xlabelO2]<=self.xrange[1])]
+        
+        xlabelAir = self.AirData.columns.tolist()[0]
+        self.AirFitRange = self.AirData[(self.AirData[xlabelAir]>=self.xrange[0])&(self.AirData[xlabelAir]<=self.xrange[1])] 
+        
+    def setFitRange2(self):
+        xlabelN2 = self.N2Data.columns.tolist()[0]  
+        self.N2FitRange2 = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange2[0])&(self.N2Data[xlabelN2]<=self.xrange2[1])]            
+        
+        xlabelO2 = self.O2Data.columns.tolist()[0]
+        self.O2FitRange2 =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange2[0])&(self.O2Data[xlabelO2]<=self.xrange2[1])]
+        
+        xlabelAir = self.AirData.columns.tolist()[0]
+        self.AirFitRange2 = self.AirData[(self.AirData[xlabelAir]>=self.xrange2[0])&(self.AirData[xlabelAir]<=self.xrange2[1])] 
+        
     def setFigData(self,item):
         """ takes the currently selected polymer set, and stores the plot data variables
         """
@@ -138,18 +172,19 @@ class Main(QMainWindow, Ui_MainWindow):
             self.O2Data = self.selectedPoly.O2curve[sample][daySelected]
             self.AirData = self.selectedPoly.Aircurve[sample][daySelected]
             
+            self.setFitRange()
             
             xlabelN2 = self.N2Data.columns.tolist()[0]  
-            ylabelN2 = self.N2Data.columns.tolist()[1] 
-            self.N2FitRange = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange[0])&(self.N2Data[xlabelN2]<=self.xrange[1])]            
             
             xlabelO2 = self.O2Data.columns.tolist()[0]
-            ylabelO2 = self.O2Data.columns.tolist()[1]
-            self.O2FitRange =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange[0])&(self.O2Data[xlabelO2]<=self.xrange[1])]
             
             xlabelAir = self.AirData.columns.tolist()[0]
+            
+            ylabelN2 = self.N2Data.columns.tolist()[1]      
+            
+            ylabelO2 = self.O2Data.columns.tolist()[1]
+            
             ylabelAir = self.AirData.columns.tolist()[1]
-            self.AirFitRange = self.AirData[(self.AirData[xlabelAir]>=self.xrange[0])&(self.AirData[xlabelAir]<=self.xrange[1])]
             
             #plot the different gas spectrometer measurements
             fig = Figure()
@@ -172,15 +207,57 @@ class Main(QMainWindow, Ui_MainWindow):
         colHeadersO2 = self.O2FitRange.columns.tolist()
         colHeadersAir = self.AirFitRange.columns.tolist()
         
+        if self.method == 0 :
+            x0 = self.xrange[1] + 0.001*self.xrange[1]
+            x2 = self.peakWave[self.dye]
+            extraData = pd.Series(np.linspace(x0,x2,100))
+            
+            self.xfitN2Waves = self.N2FitRange[colHeadersN2[0]].append(extraData,ignore_index=True)
+            self.xfitO2Waves = self.N2FitRange[colHeadersO2[0]].append(extraData,ignore_index=True)
+            self.xfitAirWaves = self.N2FitRange[colHeadersAir[0]].append(extraData,ignore_index=True)
+            
+            self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.N2FitRange[colHeadersN2[0]], 
+                                             ydata =self.N2FitRange[colHeadersN2[1]],fitType = self.fitType )
+            self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.O2FitRange[colHeadersO2[0]],
+                                                         ydata = self.O2FitRange[colHeadersO2[1]],fitType=self.fitType)
+            self.paramAir,self.param_covAir = fit.fitCurve(xdata=self.AirFitRange[colHeadersAir[0]],
+                                                           ydata=self.AirFitRange[colHeadersAir[1]],fitType=self.fitType)
+            
+            yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
+            
+        
+        elif self.method == 1:
+            
+            self.xfitN2Waves = self.N2FitRange[colHeadersN2[0]].append(self.N2FitRange2[colHeadersN2[0]],ignore_index=True)
+            self.xfitO2Waves = self.O2FitRange[colHeadersO2[0]].append(self.O2FitRange2[colHeadersO2[0]],ignore_index=True)
+            self.xfitAirWaves = self.AirFitRange[colHeadersAir[0]].append(self.AirFitRange2[colHeadersAir[0]],ignore_index=True)
+            
+            self.yfitN2Waves = self.N2FitRange[colHeadersN2[1]].append(self.N2FitRange2[colHeadersN2[1]],ignore_index=True)
+            self.yfitO2Waves = self.O2FitRange[colHeadersO2[1]].append(self.O2FitRange2[colHeadersO2[1]],ignore_index=True)
+            self.yfitAirWaves = self.AirFitRange[colHeadersAir[1]].append(self.AirFitRange2[colHeadersAir[1]],ignore_index=True)
+            
+            self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.xfitN2Waves, 
+                                 ydata =self.yfitN2Waves,fitType = self.fitType )
+            self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.xfitO2Waves,
+                                 ydata = self.yfitO2Waves,fitType=self.fitType)
+            self.paramAir,self.param_covAir = fit.fitCurve(xdata= self.xfitAirWaves,
+                               ydata=self.yfitAirWaves,fitType=self.fitType)
+            
+            yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
+            
+        """
         self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.N2FitRange[colHeadersN2[0]], 
                                                      ydata =self.N2FitRange[colHeadersN2[1]],fitType = self.fitType )
         self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.O2FitRange[colHeadersO2[0]],
                                                      ydata = self.O2FitRange[colHeadersO2[1]],fitType=self.fitType)
         self.paramAir,self.param_covAir = fit.fitCurve(xdata=self.AirFitRange[colHeadersAir[0]],
                                                        ydata=self.AirFitRange[colHeadersAir[1]],fitType=self.fitType)
+        """
+            
+            
         #start generating plot data here 
         #going to fit based on the air curve data
-        yfitted = fit.applyFit(self.O2FitRange[colHeadersO2[0]],self.paramO2,self.fitType)
+        #yfitted = fit.applyFit(self.O2FitRange[colHeadersO2[0]],self.paramO2,self.fitType)
         
         if hasattr(self,'figKey'):
             fig = self.fig_dict[self.figKey]
@@ -189,7 +266,8 @@ class Main(QMainWindow, Ui_MainWindow):
                 if 'Extrapolated Blue Light Curve' == line.get_label():
                     ax.lines.remove(line)
                     break
-            ax.plot(self.O2FitRange[colHeadersO2[0]],yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
+            #ax.plot(self.O2FitRange[colHeadersO2[0]],yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
+            ax.plot(self.xfitO2Waves,yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
             ax.legend(loc='upper right')
             #self.fig_dict[self.figKey] = fig
             self.changefig(self.figKey,fig)
@@ -299,27 +377,22 @@ class Main(QMainWindow, Ui_MainWindow):
     def lbEdit(self,item):
         self.xrange[0] = float(item)
         
-        xlabelN2 = self.N2Data.columns.tolist()[0]  
-        self.N2FitRange = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange[0])&(self.N2Data[xlabelN2]<=self.xrange[1])]            
-        
-        xlabelO2 = self.O2Data.columns.tolist()[0]
-        self.O2FitRange =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange[0])&(self.O2Data[xlabelO2]<=self.xrange[1])]
-        
-        xlabelAir = self.AirData.columns.tolist()[0]
-        self.AirFitRange = self.AirData[(self.AirData[xlabelAir]>=self.xrange[0])&(self.AirData[xlabelAir]<=self.xrange[1])]
+        self.setFitRange()
         
         
     def rbEdit(self,item):
         self.xrange[1] = float(item)
         
-        xlabelN2 = self.N2Data.columns.tolist()[0]  
-        self.N2FitRange = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange[0])&(self.N2Data[xlabelN2]<=self.xrange[1])]            
+        self.setFitRange()
         
-        xlabelO2 = self.O2Data.columns.tolist()[0]
-        self.O2FitRange =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange[0])&(self.O2Data[xlabelO2]<=self.xrange[1])]
+    def lb2Edit(self,item):
+        self.xrange2[0] = float(item)
         
-        xlabelAir = self.AirData.columns.tolist()[0]
-        self.AirFitRange = self.AirData[(self.AirData[xlabelAir]>=self.xrange[0])&(self.AirData[xlabelAir]<=self.xrange[1])]
+        self.setFitRange2()
+    def rb2Edit(self,item):
+        self.xrange2[1] = float(item)
+        
+        self.setFitRange2()
         
     def clearFit(self):
         if hasattr(self,'figKey'):
@@ -331,8 +404,15 @@ class Main(QMainWindow, Ui_MainWindow):
                     ax.legend(loc='upper right')
                     self.changefig(self.figKey,fig)
                     break
-            
-        
+    def method1Toggle(self):
+        self.method = 0 
+        self.LB2_lineEdit.setEnabled(False)
+        self.RB2_lineEdit.setEnabled(False)
+    def method2Toggle(self):
+        self.method=1
+        self.LB2_lineEdit.setEnabled(True)
+        self.RB2_lineEdit.setEnabled(True)
+        self.setFitRange2()
         
         
 if __name__ == "__main__":
