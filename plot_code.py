@@ -20,10 +20,13 @@ import fit_code as fit
 ##############################
 import numpy as np 
 import pandas as pd
+import seaborn as sns
 
 from PyQt5.uic import loadUiType
 
 from matplotlib.figure import Figure 
+
+import matplotlib.pyplot as plt
 
 from matplotlib.backends.backend_qt5agg import(FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 
@@ -34,6 +37,7 @@ from PyQt5.QtWidgets import QTreeWidgetItem
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QListWidget
+from PyQt5.QtWidgets import QAbstractItemView
         
 
 class Main(QMainWindow, Ui_MainWindow):
@@ -44,8 +48,8 @@ class Main(QMainWindow, Ui_MainWindow):
         
         self.fig_dict = {}
         self.xlFileName = ""
-        self.outputdir = ""
-        self.dye = "Pd"
+        self.outputDir = ""
+        self.dye = "Pt"
         self.expKey = "photobleaching"
         self.polymerObjects ={}
         self.fitType = "expSingle"
@@ -54,8 +58,17 @@ class Main(QMainWindow, Ui_MainWindow):
         self.currentFigKey = "" 
         self.peakWave = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
         self.method = 0 #0 for extrapolation, 1 for interpolation
-    
         
+        #reporting variables
+        
+        self.reportOptions = {'plots':{'single':0,'all':1},'blueLight':{'use':0,'none':1},'normalized':{'normal':0,'none':1},
+                              'errorBars':{'std':0,'CI':1}}
+        self.plotOption = 1 #all samples
+        self.blueLight = 0 #apply the fits
+        self.normalized = 0 #normalize the data
+        self.errorBar = 1 # add ci error bars 
+        
+        self.reportSamples = {}
         #define polynomial degree widget
         self.QList = QListWidget()
         
@@ -93,15 +106,15 @@ class Main(QMainWindow, Ui_MainWindow):
         self.excelChoose_pushButton.clicked.connect(self.setxlFile)
         self.excel_lineEdit.textEdited.connect(self.setxlFile_lineEdit)
         
-        #define save file location
-        
-        self.fileChoose_pushButton.clicked.connect(self.setoutputdir)
-        self.fileLoc_lineEdit.textEdited.connect(self.setoutputdir_lineEdit)
+        #define where to save output data         
+        self.fileChoose_pushButton.clicked.connect(self.setoutputDir)
+        self.fileLoc_lineEdit.textEdited.connect(self.setoutputDir_lineEdit)
         
         #define dropbox for user to select dye 
         #assuming first item in list below is the default selected item.  hard coded for now due to lack of dev time
-        self.dye_comboBox.addItem("Pd")
+        
         self.dye_comboBox.addItem("Pt")
+        self.dye_comboBox.addItem("Pd")
         self.dye_comboBox.addItem("Ru")
         
         self.dye_comboBox.currentTextChanged.connect(self.setDye)
@@ -129,8 +142,33 @@ class Main(QMainWindow, Ui_MainWindow):
         self.polyButton.clicked.connect(self.fitPoly)
         #single Exponential
         self.singleExpButton.clicked.connect(self.fitSingleExp)
+        #double exponential
+        self.dblExpButton.clicked.connect(self.fitDblExp)
+        #logarithmic
+        self.logButton.clicked.connect(self.fitLog)
+        #Huber Curve
+        self.hubertButton.clicked.connect(self.fitHubert)
+        #sigmoidal
+        self.sigButton.clicked.connect(self.fitSigmoid)
         
+        #reporting widgets
+        self.samp_radioButton.toggled.connect(self.setOptions)
+        self.allSamp_radioButton.toggled.connect(self.setOptions)
+        self.BL_radioButton.toggled.connect(self.setOptions)
+        self.noBL_radioButton.toggled.connect(self.setOptions)
+        self.normal_radioButton.toggled.connect(self.setOptions)
+        self.noNormal_radioButton.toggled.connect(self.setOptions)
+        self.std_radioButton.toggled.connect(self.setOptions)
+        self.CI_radioButton.toggled.connect(self.setOptions)
         
+        self.allSamp_radioButton.setChecked(True)
+        self.BL_radioButton.setChecked(True)
+        self.normal_radioButton.setChecked(True)
+        self.CI_radioButton.setChecked(True)
+        
+        self.reportSamples_listWidget.clicked.connect(self.updateReportSamples)
+        
+        self.reportButton.clicked.connect(self.generateReport)
         
     def closeEvent(self,event):
         print("Exiting Program")
@@ -161,17 +199,33 @@ class Main(QMainWindow, Ui_MainWindow):
         """ takes the currently selected polymer set, and stores the plot data variables
         """
         if (item.childCount() == 0) :
-            daySelected = item.text(0)
-            parent1 = item.parent()
-            sample = parent1.text(0)
-            parent2 = parent1.parent()
-            polyName = parent2.text(0)
-            self.selectedPoly = self.polymerObjects[polyName]
-            
-            self.N2Data = self.selectedPoly.N2curve[sample][daySelected]
-            self.O2Data = self.selectedPoly.O2curve[sample][daySelected]
-            self.AirData = self.selectedPoly.Aircurve[sample][daySelected]
-            
+            if self.expKey == 'photobleaching':
+                daySelected = item.text(0)
+                parent1 = item.parent()
+                sample = parent1.text(0)
+                parent2 = parent1.parent()
+                polyName = parent2.text(0)
+                self.selectedPoly = self.polymerObjects[polyName]
+                self.selectedSample = sample
+                self.selectedDay = daySelected
+                
+                self.N2Data = self.selectedPoly.N2curve[sample][daySelected]
+                self.O2Data = self.selectedPoly.O2curve[sample][daySelected]
+                self.AirData = self.selectedPoly.Aircurve[sample][daySelected]
+            elif self.expKey == 'lifetime':
+                sample = item.text(0)
+                parent = item.parent()
+                polyName = parent.text(0)
+                self.selectedPoly = self.polymerObjects[polyName]
+                self.selectedSample = sample
+
+                self.N2Data = self.selectedPoly.N2curve[sample]
+                self.O2Data = self.selectedPoly.O2curve[sample]
+                self.AirData = self.selectedPoly.Aircurve[sample]
+                
+            elif self.expKey == 'temperature':
+                print('hey...listen!')
+        
             self.setFitRange()
             
             xlabelN2 = self.N2Data.columns.tolist()[0]  
@@ -197,8 +251,17 @@ class Main(QMainWindow, Ui_MainWindow):
             ax.set_title('Spectrometer Intensity Readings')
             ax.legend(loc='upper right')
             
-            self.figKey = polyName + sample + daySelected
-            self.changefig(self.figKey,fig)
+            if self.expKey == 'photobleaching':
+                self.figKey = polyName + ' '+sample +' '+ daySelected
+                self.changefig(self.figKey,fig)                
+            elif self.expKey == 'lifetime':
+                self.figKey = polyName + ' ' + sample
+                self.changefig(self.figKey,fig)
+            elif self.expKey == 'temperature':
+                print('still need to add more code for temperature analysis')
+                
+            #self.figKey = polyName + ' '+sample +' '+ daySelected
+            #self.changefig(self.figKey,fig)
             
             
             
@@ -225,6 +288,18 @@ class Main(QMainWindow, Ui_MainWindow):
             
             yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
             
+            ydata = self.O2FitRange[colHeadersO2[1]]
+            
+            R = self.RSquared(self.xfitO2Waves.values,ydata.values,yfitted.values)
+            
+            if self.expKey == 'photobleaching':
+                dayDict = {self.selectedDay:R}
+                sampleDict = {self.selectedSample:dayDict}
+                self.selectedPoly.RSquare.update(sampleDict)
+            elif self.expKey == 'lifetime':
+                self.selectedPoly.RSquare.update({self.selectedSample:R})
+                
+            self.polymerObjects[self.selectedPoly.name] = self.selectedPoly
         
         elif self.method == 1:
             
@@ -245,15 +320,16 @@ class Main(QMainWindow, Ui_MainWindow):
             
             yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
             
-        """
-        self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.N2FitRange[colHeadersN2[0]], 
-                                                     ydata =self.N2FitRange[colHeadersN2[1]],fitType = self.fitType )
-        self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.O2FitRange[colHeadersO2[0]],
-                                                     ydata = self.O2FitRange[colHeadersO2[1]],fitType=self.fitType)
-        self.paramAir,self.param_covAir = fit.fitCurve(xdata=self.AirFitRange[colHeadersAir[0]],
-                                                       ydata=self.AirFitRange[colHeadersAir[1]],fitType=self.fitType)
-        """
+            ydata = self.O2FitRange[colHeadersO2[1]].append(self.O2FitRange2[colHeadersO2[1]],ignore_index=True)
             
+            R = self.RSquared(self.xfitO2Waves.values,ydata.values,yfitted.values)
+            
+            if self.expKey == 'photobleaching':
+                dayDict = {self.selectedDay:R}
+                sampleDict = {self.selectedSample:dayDict}
+                self.selectedPoly.RSquare.update(sampleDict)
+            elif self.expKey == 'lifetime':
+                self.selectedPoly.RSquare.update({self.selectedSample:R})
             
         #start generating plot data here 
         #going to fit based on the air curve data
@@ -266,6 +342,7 @@ class Main(QMainWindow, Ui_MainWindow):
                 if 'Extrapolated Blue Light Curve' == line.get_label():
                     ax.lines.remove(line)
                     break
+            self.saveBlueOverlap()
             #ax.plot(self.O2FitRange[colHeadersO2[0]],yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
             ax.plot(self.xfitO2Waves,yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
             ax.legend(loc='upper right')
@@ -274,6 +351,29 @@ class Main(QMainWindow, Ui_MainWindow):
         
         
         
+    def saveBlueOverlap(self):
+        polyIDs = self.figKey.split(' ')
+        if self.expKey == 'photobleaching':
+            name = polyIDs[0]
+            sample = polyIDs[1]
+            day = polyIDs[2]
+            waveLength = self.peakWave[self.dye]
+            blueFitVal = fit.applyFit(waveLength,self.paramO2,self.fitType)
+            blueFit = {day:blueFitVal}
+            sampleDict = {sample:blueFit}
+            poly = self.polymerObjects[name]
+            poly.O2BlueFit.update(sampleDict)
+            self.polymerObjects[name] = poly
+        elif self.expKey == 'lifetime':
+            name = polyIDs[0]
+            sample = polyIDs[1]
+            waveLength = self.peakWave[self.dye]
+            blueFitVal = fit.applyFit(waveLength,self.paramO2,self.fitType)
+            blueFit = {sample:blueFitVal}
+            poly = self.polymerObjects[name]
+            poly.O2BlueFit.update(blueFit)
+            self.polymerObjects[name] = poly
+                    
     def addmpl(self, fig):
         self.canvas = FigureCanvas(fig)
         self.mplvl.addWidget(self.canvas)
@@ -303,8 +403,9 @@ class Main(QMainWindow, Ui_MainWindow):
         
     def setTreeCols(self,expType):
         if "Aging Experiment" in expType:
+            self.sample_treeWidget.clear()
             self.sample_treeWidget.setHeaderLabels(['Polymer','Sample','Time'])
-            self.key = "photobleaching"
+            self.expKey = "photobleaching"
             
             if not (self.polymerObjects):
                 return
@@ -325,9 +426,22 @@ class Main(QMainWindow, Ui_MainWindow):
                     
                 
         elif "Temperature Agglomeration Experiment" in expType:
-            self.key = "temperature"
+            self.expKey = "temperature"
         elif "Lifetime Experiment" in expType:
-            self.key = "lifetime"
+            self.expKey = "lifetime"
+            self.sample_treeWidget.clear()
+            self.sample_treeWidget.setHeaderLabels(['Polymer','Sample'])
+            
+            if not (self.polymerObjects):
+                return
+            else:
+                
+                for key in self.polymerObjects.keys():
+                    poly = self.polymerObjects[key]
+                    li = QTreeWidgetItem(self.sample_treeWidget,[key])
+                    for cat in poly.Category:
+                        sampChild = QTreeWidgetItem(li,[cat])
+                    self.sample_treeWidget.addTopLevelItem(li)
             
     def setxlFile(self):
         fname = QFileDialog.getOpenFileName(self,'Open file', 
@@ -335,21 +449,23 @@ class Main(QMainWindow, Ui_MainWindow):
         self.xlFileName = fname[0]
         self.excel_lineEdit.setText(fname[0])
         
-    def setoutputdir(self):
+    def setoutputDir(self):
         dirname = QFileDialog.getExistingDirectory(self,"Select Directory for Analysis output")
-        self.outputdir = dirname[0]
-        self.fileLoc_lineEdit.setText(dirname[0])
+        self.outputDir = dirname
+        self.fileLoc_lineEdit.setText(dirname)
         
     def setxlFile_lineEdit(self, item):
         self.xlFileName = item 
         
-    def setoutputdir_lineEdit(self,item):
-        self.outputdir = item
+    def setoutputDir_lineEdit(self,item):
+        self.outputDir = item
+        
         
     def setDye(self,item):
         self.dye = item
         
     def run(self):
+        self.sample_treeWidget.clear()
         self.polymerObjects.update( SE.loadExcelData(self.xlFileName,self.expKey,self.dye) ) 
         #print('Data Successfully Loaded')
         msg = QMessageBox()
@@ -357,6 +473,17 @@ class Main(QMainWindow, Ui_MainWindow):
         msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
         msg.exec_()
         self.setTreeCols(self.exp_comboBox.currentText())
+        self.setReportSampleList()
+        
+    def setReportSampleList(self):
+        self.reportSamples_listWidget.clear()
+        self.reportSamples.clear()
+        for key in self.polymerObjects.keys():
+            self.reportSamples_listWidget.addItem(key)
+    def updateReportSamples(self,item):
+        #$self.reportSamples.update({item.text():self.polymerObjects[item.text()]})
+        for item in self.reportSamples_listWidget.selectedItems():
+            self.reportSamples.update({item.text():self.polymerObjects[item.text()]})
         
     def fitPoly(self):
         self.QList.show()
@@ -365,7 +492,25 @@ class Main(QMainWindow, Ui_MainWindow):
         self.fitType = "expSingle"
         if hasattr(self,'figKey'):
             self.FitData()
-        
+            
+    def fitDblExp(self):
+        self.fitType = "expDouble"
+        if hasattr(self,'figKey'):
+            self.FitData()
+    def fitLog(self):
+        self.fitType = "logarithmic"
+        if hasattr(self,'figKey'):
+            self.FitData()
+            
+    def fitSigmoid(self):
+        self.figKey = "Sigmoidal"
+        if hasattr(self,'figKey'):
+            self.FitData()
+            
+    def fitHubert(self):
+        self.figKey = "Hubert"
+        if hasattr(self,'figKey'):
+            self.FitData()
         
     def degListClicked(self,item):
         self.fitType = "poly" + item.text()
@@ -403,6 +548,8 @@ class Main(QMainWindow, Ui_MainWindow):
                     ax.lines.remove(line)
                     ax.legend(loc='upper right')
                     self.changefig(self.figKey,fig)
+                    self.selectedPoly.O2BlueFit.clear()
+                    self.polymerObjects[self.selectedPoly.name] = self.selectedPoly
                     break
     def method1Toggle(self):
         self.method = 0 
@@ -413,6 +560,110 @@ class Main(QMainWindow, Ui_MainWindow):
         self.LB2_lineEdit.setEnabled(True)
         self.RB2_lineEdit.setEnabled(True)
         self.setFitRange2()
+        
+    def RSquared(xdata,ydata,yfit):
+        SSReg = np.sum(np.power((yfit-np.average(yfit)),2))
+        SSTotal = np.sum(np.power((ydata-np.average(ydata)),2))
+        
+        RSquare = 1 - (SSReg/SSTotal)
+        
+        return RSquare
+    
+    #report gui tab functions
+    
+    def setOptions(self):
+        if self.samp_radioButton.isChecked():
+            self.plotOption = self.reportOptions['plots']['single']
+            self.reportSamples_listWidget.setSelectionMode(QAbstractItemView.SingleSelection)
+            
+        elif self.allSamp_radioButton.isChecked():
+            self.plotOption = self.reportOptions['plots']['all']
+            self.reportSamples_listWidget.setSelectionMode(QAbstractItemView.MultiSelection)
+            
+        if self.BL_radioButton.isChecked():
+            self.blueLight = self.reportOptions['blueLight']['use']
+            
+        elif self.noBL_radioButton.isChecked():
+            self.blueLight = self.reportOptions['blueLight']['none']
+            
+        if self.normal_radioButton.isChecked():
+            self.blueLight = self.reportOptions['normalized']['normal']
+            
+        elif self.noNormal_radioButton.isChecked():
+            self.blueLight = self.reportOptions['normalized']['none']
+            
+        if  self.std_radioButton.isChecked():
+            self.blueLight = self.reportOptions['errorBars']['std']
+            
+        elif self.CI_radioButton.isChecked():
+            self.blueLight = self.reportOptions['errorBars']['CI']
+            
+    
+    def generateReport(self):
+        sns.set_context('poster')
+        if not self.outputDir:
+            QMessageBox("Please Enter an output directory before generating report data.")
+        else:
+            if self.plotOption == 0: #single plot
+                print('navi')
+            elif self.plotOption == 1: #all samples to one plot
+                if self.reportSamples: #check that user actually selected samples 
+                    if self.expKey == 'photobleaching': #check the experiment type 
+                        fig1 = plt.Figure()
+                        fig1.set_canvas(plt.gcf().canvas)
+                        ax1 = fig1.add_subplot(111)
+                        ax1.set_xlabel('Time')
+                        ax1.set_ylabel('Intensity Ratio (Photon Counts)')
+                        ax1.set_title('Sensitivity of Nitrogen Intensity over Air Intensity (IN2/IO2)')
+                        
+                        fig2 = plt.Figure()
+                        fig2.set_canvas(plt.gcf().canvas)
+                        ax2 = fig2.add_subplot(111)
+                        ax2.set_xlabel('Time')
+                        ax2.set_ylabel('Intensity Ratio (Photon Counts)')
+                        ax2.set_title('Sensitivity of Nitrogen Intensity over Oxygen Intensity (IN2/IO2)')
+                        
+                    elif self.expKey == 'lifetime':
+                        #consider plotting the lifetime experiements differently 
+                        print('hello')
+                        
+                    for key in self.reportSamples.keys():
+                        
+                        Poly = self.polymerObjects[key]
+                        
+                        #apply blue light fit an error bars 
+                        
+                        if self.blueLight == 0: #apply the fit if zero
+                            Poly.subtractBlueLight(method=1,expType=self.expKey)
+                            
+                        Poly.addErrorBars(errtype=self.errorBar)
+                            
+                        if self.normalized ==0:
+                            Poly.normalize()
+                            
+                        if self.expKey == 'photobleaching':
+                            plt.plot(Poly.Time,Poly.IN2_AirAvg)
+                            ax1.errorbar(Poly.Time,Poly.IN2_AirAvg,yerr = Poly.errorBarsN2Air,label = key)
+                            ax2.errorbar(Poly.Time,Poly.IN2_O2Avg,yerr=Poly.errorBarsN2O2,label=key)
+                            
+                        elif self.expKey == 'lifetime':
+                            #do stuff here 
+                            print('something')
+                    ax1.legend()
+                    ax2.legend()
+                    
+                    filename1 = self.outputDir +'/'+ 'N2_Air'+'_'+self.expKey+".png"
+                    filename2 = self.outputDir + '/'+'N2_O2'+'_'+self.expKey+".png"
+                    fig1.savefig(filename1)
+                    fig2.savefig(filename2)
+                        
+                        
+                        
+                        
+                else:
+                    QMessageBox("Make Sure to load data before generating report data.")
+                    
+            
         
         
 if __name__ == "__main__":
