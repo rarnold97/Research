@@ -21,6 +21,7 @@ import fit_code as fit
 import numpy as np 
 import pandas as pd
 import seaborn as sns
+import importlib
 
 from PyQt5.uic import loadUiType
 
@@ -58,11 +59,12 @@ class Main(QMainWindow, Ui_MainWindow):
         self.currentFigKey = "" 
         self.peakWave = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
         self.method = 0 #0 for extrapolation, 1 for interpolation
+        self.blueFitMethod =- 1 
         
         #reporting variables
         
         self.reportOptions = {'plots':{'single':0,'all':1},'blueLight':{'use':0,'none':1},'normalized':{'normal':0,'none':1},
-                              'errorBars':{'std':0,'CI':1}}
+                              'errorBars':{'std':0,'CI':1},'blueMethod':{'one':1,'all':2}}
         #self.plotOption = 1 #all samples
         self.blueLight = 0 #apply the fits
         self.normalized = 0 #normalize the data
@@ -97,6 +99,7 @@ class Main(QMainWindow, Ui_MainWindow):
         
         self.exp_comboBox.addItem("Aging Experiment")
         self.exp_comboBox.addItem("Lifetime Experiment")
+        self.exp_comboBox.addItem("Temperature Agglomeration Experiment")
         
         self.exp_comboBox.currentTextChanged.connect(self.setTreeCols)
         
@@ -169,27 +172,34 @@ class Main(QMainWindow, Ui_MainWindow):
         
         self.reportButton.clicked.connect(self.generateReport)
         
+        self.blueMethod1_radioButton.toggled.connect(self.setOptions)
+        self.blueMethod2_radioButton.toggled.connect(self.setOptions)
+        
+        self.blueMethod1_radioButton.setChecked(True)
+        
     def closeEvent(self,event):
         print("Exiting Program")
         #exit()
         sys.exit()
         
     def setFitRange(self):
-        xlabelN2 = self.N2Data.columns.tolist()[0]  
-        self.N2FitRange = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange[0])&(self.N2Data[xlabelN2]<=self.xrange[1])]            
-        
-        xlabelO2 = self.O2Data.columns.tolist()[0]
-        self.O2FitRange =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange[0])&(self.O2Data[xlabelO2]<=self.xrange[1])]
+        if self.expKey != 'temperature':
+            xlabelN2 = self.N2Data.columns.tolist()[0]  
+            self.N2FitRange = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange[0])&(self.N2Data[xlabelN2]<=self.xrange[1])]            
+            
+            xlabelO2 = self.O2Data.columns.tolist()[0]
+            self.O2FitRange =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange[0])&(self.O2Data[xlabelO2]<=self.xrange[1])]
         
         xlabelAir = self.AirData.columns.tolist()[0]
         self.AirFitRange = self.AirData[(self.AirData[xlabelAir]>=self.xrange[0])&(self.AirData[xlabelAir]<=self.xrange[1])] 
         
     def setFitRange2(self):
-        xlabelN2 = self.N2Data.columns.tolist()[0]  
-        self.N2FitRange2 = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange2[0])&(self.N2Data[xlabelN2]<=self.xrange2[1])]            
-        
-        xlabelO2 = self.O2Data.columns.tolist()[0]
-        self.O2FitRange2 =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange2[0])&(self.O2Data[xlabelO2]<=self.xrange2[1])]
+        if self.expKey != 'temperature':
+            xlabelN2 = self.N2Data.columns.tolist()[0]  
+            self.N2FitRange2 = self.N2Data[(self.N2Data[xlabelN2]>=self.xrange2[0])&(self.N2Data[xlabelN2]<=self.xrange2[1])]            
+            
+            xlabelO2 = self.O2Data.columns.tolist()[0]
+            self.O2FitRange2 =self.O2Data[(self.O2Data[xlabelO2]>=self.xrange2[0])&(self.O2Data[xlabelO2]<=self.xrange2[1])]
         
         xlabelAir = self.AirData.columns.tolist()[0]
         self.AirFitRange2 = self.AirData[(self.AirData[xlabelAir]>=self.xrange2[0])&(self.AirData[xlabelAir]<=self.xrange2[1])] 
@@ -224,26 +234,39 @@ class Main(QMainWindow, Ui_MainWindow):
                 self.N2Data = self.selectedPoly.N2curve[duration][sample]
                 self.O2Data = self.selectedPoly.O2curve[duration][sample]
                 self.AirData = self.selectedPoly.Aircurve[duration][sample]
+            elif self.expKey == 'temperature':
+                daySelected = item.text(0)
+                parent1 = item.parent()
+                sample = parent1.text(0)
+                parent2 = parent1.parent()
+                polyName = parent2.text(0)
+                self.selectedPoly = self.polymerObjects[polyName]
+                self.selectedSample = sample
+                self.selectedDay = daySelected
+                
+                self.AirData = self.selectedPoly.Aircurve[sample][float(daySelected)]
         
             self.setFitRange()
             
-            xlabelN2 = self.N2Data.columns.tolist()[0]  
-            
-            xlabelO2 = self.O2Data.columns.tolist()[0]
+            if self.expKey != 'temperature':
+                
+                xlabelN2 = self.N2Data.columns.tolist()[0]  
+                xlabelO2 = self.O2Data.columns.tolist()[0]
+                ylabelN2 = self.N2Data.columns.tolist()[1]      
+                ylabelO2 = self.O2Data.columns.tolist()[1]
             
             xlabelAir = self.AirData.columns.tolist()[0]
-            
-            ylabelN2 = self.N2Data.columns.tolist()[1]      
-            
-            ylabelO2 = self.O2Data.columns.tolist()[1]
             
             ylabelAir = self.AirData.columns.tolist()[1]
             
             #plot the different gas spectrometer measurements
             fig = Figure()
             ax = fig.add_subplot(111)
-            ax.plot(self.N2Data[xlabelN2].values,self.N2Data[ylabelN2],color='red',label='N2 Intensity')
-            ax.plot(self.O2Data[xlabelO2],self.O2Data[ylabelO2],color='blue',label='O2 Intensity')
+            
+            if self.expKey != 'temperature':
+                ax.plot(self.N2Data[xlabelN2].values,self.N2Data[ylabelN2],color='red',label='N2 Intensity')
+                ax.plot(self.O2Data[xlabelO2],self.O2Data[ylabelO2],color='blue',label='O2 Intensity')
+                
             ax.plot(self.AirData[xlabelAir],self.AirData[ylabelAir],color='purple',label='Air Intensity')
             ax.set_xlabel('Wavelength (nm)')
             ax.set_ylabel('Photon Counts')
@@ -257,7 +280,8 @@ class Main(QMainWindow, Ui_MainWindow):
                 self.figKey = polyName + '&' + duration+ '&' + sample
                 self.changefig(self.figKey,fig)
             elif self.expKey == 'temperature':
-                print('still need to add more code for temperature analysis')
+                self.figKey = polyName + '&' + sample + '&' + daySelected
+                self.changefig(self.figKey,fig)
                 
             #self.figKey = polyName + ' '+sample +' '+ daySelected
             #self.changefig(self.figKey,fig)
@@ -265,8 +289,9 @@ class Main(QMainWindow, Ui_MainWindow):
             
             
     def FitData(self):
-        colHeadersN2 = self.N2FitRange.columns.tolist()
-        colHeadersO2 = self.O2FitRange.columns.tolist()
+        if self.expKey != 'temperature':
+            colHeadersN2 = self.N2FitRange.columns.tolist()
+            colHeadersO2 = self.O2FitRange.columns.tolist()
         colHeadersAir = self.AirFitRange.columns.tolist()
         
         if self.method == 0 :
@@ -274,20 +299,25 @@ class Main(QMainWindow, Ui_MainWindow):
             x2 = self.peakWave[self.dye]
             extraData = pd.Series(np.linspace(x0,x2,100))
             
-            self.xfitN2Waves = self.N2FitRange[colHeadersN2[0]].append(extraData,ignore_index=True)
-            self.xfitO2Waves = self.O2FitRange[colHeadersO2[0]].append(extraData,ignore_index=True)
+            if self.expKey != 'temperature':
+                self.xfitN2Waves = self.N2FitRange[colHeadersN2[0]].append(extraData,ignore_index=True)
+                self.xfitO2Waves = self.O2FitRange[colHeadersO2[0]].append(extraData,ignore_index=True)
             self.xfitAirWaves = self.AirFitRange[colHeadersAir[0]].append(extraData,ignore_index=True)
             
-            self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.N2FitRange[colHeadersN2[0]], 
-                                             ydata =self.N2FitRange[colHeadersN2[1]],fitType = self.fitType )
-            self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.O2FitRange[colHeadersO2[0]],
-                                                         ydata = self.O2FitRange[colHeadersO2[1]],fitType=self.fitType)
+            if self.expKey != 'temperature':
+                self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.N2FitRange[colHeadersN2[0]], 
+                                                 ydata =self.N2FitRange[colHeadersN2[1]],fitType = self.fitType )
+                self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.O2FitRange[colHeadersO2[0]],
+                                                             ydata = self.O2FitRange[colHeadersO2[1]],fitType=self.fitType)
             self.paramAir,self.param_covAir = fit.fitCurve(xdata=self.AirFitRange[colHeadersAir[0]],
                                                            ydata=self.AirFitRange[colHeadersAir[1]],fitType=self.fitType)
             
-            yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
-            
-            ydata = self.O2FitRange[colHeadersO2[1]]
+            if self.expKey != 'temperature':
+                yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
+                ydata = self.O2FitRange[colHeadersO2[1]]
+            else:
+                yfitted = fit.applyFit(self.xfitAirWaves,self.paramAir,self.fitType)
+                ydata = self.AirFitRange[colHeadersAir[1]]                
             
             yi = ydata.values
             yf = yfitted.values
@@ -301,29 +331,40 @@ class Main(QMainWindow, Ui_MainWindow):
                 self.selectedPoly.RSquare.update(sampleDict)
             elif self.expKey == 'lifetime':
                 self.selectedPoly.RSquare.update({self.selectedDuration:{self.selectedSample:R}})
+            elif self.expKey == 'temperature':
+                self.selectedPolt.RSquare.update({self.selectedSample:{self.selectedDay:R}})
                 
             self.polymerObjects[self.selectedPoly.name] = self.selectedPoly
         
         elif self.method == 1:
             
-            self.xfitN2Waves = self.N2FitRange[colHeadersN2[0]].append(self.N2FitRange2[colHeadersN2[0]],ignore_index=True)
-            self.xfitO2Waves = self.O2FitRange[colHeadersO2[0]].append(self.O2FitRange2[colHeadersO2[0]],ignore_index=True)
+            if self.expKey != 'temperature':
+                self.xfitN2Waves = self.N2FitRange[colHeadersN2[0]].append(self.N2FitRange2[colHeadersN2[0]],ignore_index=True)
+                self.xfitO2Waves = self.O2FitRange[colHeadersO2[0]].append(self.O2FitRange2[colHeadersO2[0]],ignore_index=True)
+
+                self.yfitN2Waves = self.N2FitRange[colHeadersN2[1]].append(self.N2FitRange2[colHeadersN2[1]],ignore_index=True)
+                self.yfitO2Waves = self.O2FitRange[colHeadersO2[1]].append(self.O2FitRange2[colHeadersO2[1]],ignore_index=True)
+            
             self.xfitAirWaves = self.AirFitRange[colHeadersAir[0]].append(self.AirFitRange2[colHeadersAir[0]],ignore_index=True)
             
-            self.yfitN2Waves = self.N2FitRange[colHeadersN2[1]].append(self.N2FitRange2[colHeadersN2[1]],ignore_index=True)
-            self.yfitO2Waves = self.O2FitRange[colHeadersO2[1]].append(self.O2FitRange2[colHeadersO2[1]],ignore_index=True)
             self.yfitAirWaves = self.AirFitRange[colHeadersAir[1]].append(self.AirFitRange2[colHeadersAir[1]],ignore_index=True)
             
-            self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.xfitN2Waves, 
-                                 ydata =self.yfitN2Waves,fitType = self.fitType )
-            self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.xfitO2Waves,
-                                 ydata = self.yfitO2Waves,fitType=self.fitType)
+            if self.expKey != 'temperature':
+                self.paramN2,self.param_covN2 = fit.fitCurve(xdata = self.xfitN2Waves, 
+                                     ydata =self.yfitN2Waves,fitType = self.fitType )
+                self.paramO2,self.param_covO2 = fit.fitCurve(xdata = self.xfitO2Waves,
+                                     ydata = self.yfitO2Waves,fitType=self.fitType)
             self.paramAir,self.param_covAir = fit.fitCurve(xdata= self.xfitAirWaves,
                                ydata=self.yfitAirWaves,fitType=self.fitType)
             
-            yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
-            
-            ydata = self.O2FitRange[colHeadersO2[1]].append(self.O2FitRange2[colHeadersO2[1]],ignore_index=True)
+            if self.expKey != 'temperature':
+                yfitted = fit.applyFit(self.xfitO2Waves,self.paramO2,self.fitType)
+                
+                ydata = self.O2FitRange[colHeadersO2[1]].append(self.O2FitRange2[colHeadersO2[1]],ignore_index=True)
+            else:
+                yfitted = fit.applyFit(self.xfitAirWaves,self.paramAir,self.fitType)
+                
+                ydata = self.AirFitRange[colHeadersAir[1]].append(self.AirFitRange2[colHeadersAir[1]],ignore_index=True)                
             
             yi = ydata.values
             yf = yfitted.values
@@ -336,6 +377,8 @@ class Main(QMainWindow, Ui_MainWindow):
                 self.selectedPoly.RSquare.update(sampleDict)
             elif self.expKey == 'lifetime':
                 self.selectedPoly.RSquare.update({self.selectedDuration:{self.selectedSample:R}})
+            elif self.expKey == 'temperature':
+                self.selectedPoly.RSquare.update({self.selectedSample:{self.selectedDay:R}})
             
         #start generating plot data here 
         #going to fit based on the air curve data
@@ -350,7 +393,11 @@ class Main(QMainWindow, Ui_MainWindow):
                     break
             self.saveBlueOverlap()
             #ax.plot(self.O2FitRange[colHeadersO2[0]],yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
-            ax.plot(self.xfitO2Waves,yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
+            if self.expKey != 'temperature':
+                ax.plot(self.xfitO2Waves,yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
+            else:
+                ax.plot(self.xfitAirWaves,yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
+            
             ax.legend(loc='upper right')
             #self.fig_dict[self.figKey] = fig
             self.changefig(self.figKey,fig)
@@ -384,6 +431,21 @@ class Main(QMainWindow, Ui_MainWindow):
                 poly.O2BlueFit[duration].update({sample:blueFitVal})
             else:    
                 poly.O2BlueFit.update({duration:{sample:blueFitVal}})
+            self.polymerObjects[name] = poly
+            
+        elif self.expKey == 'temperature':
+            name = polyIDs[0]
+            sample = polyIDs[1]
+            day = float(polyIDs[2])
+            waveLength = self.peakWave[self.dye]
+            blueFitVal = fit.applyFit(waveLength,self.paramAir,self.fitType)
+            poly = self.polymerObjects[name]
+            
+            if sample in poly.AirBlueFit.keys():
+                poly.AirBlueFit[sample].update({day:blueFitVal})
+            else:
+                poly.AirBlueFit.update({sample:{day:blueFitVal}})
+                
             self.polymerObjects[name] = poly
                     
     def addmpl(self, fig):
@@ -453,6 +515,27 @@ class Main(QMainWindow, Ui_MainWindow):
                         for cat in poly.Category:
                             sampChild = QTreeWidgetItem(durChild,[cat])
                     self.sample_treeWidget.addTopLevelItem(li)
+                    
+        elif "Temperature Agglomeration Experiment" in expType:
+            self.expKey = 'temperature'
+            self.sample_treeWidget.clear()
+            self.sample_treeWidget.setHeaderLabels(['PSU Dye Load','Sample','Time'])
+            
+            if not (self.polymerObjects):
+                return
+            else:
+                for key in self.polymerObjects.keys():
+                    poly = self.polymerObjects[key]
+                    li = QTreeWidgetItem(self.sample_treeWidget,[key])
+                    for cat in poly.Category:
+                        sampChild = QTreeWidgetItem(li,[cat])
+                        li.addChild(sampChild)
+                        for t in poly.Time:
+                            timeChild = QTreeWidgetItem(sampChild,[str(t)])
+                            
+                            sampChild.addChild(timeChild)
+                            
+                    self.sample_treeWidget.addTopLevelItem(li)
             
     def setxlFile(self):
         fname = QFileDialog.getOpenFileName(self,'Open file', 
@@ -477,7 +560,12 @@ class Main(QMainWindow, Ui_MainWindow):
         
     def run(self):
         self.sample_treeWidget.clear()
-        self.polymerObjects.update( SE.loadExcelData(self.xlFileName,self.expKey,self.dye) ) 
+        #self.polymerObjects.update( SE.loadExcelData(self.xlFileName,self.expKey,self.dye) ) 
+        
+        #*******************************************************************************
+        self.polymerObjects =  SE.loadExcelData(self.xlFileName,self.expKey,self.dye)  
+        #*******************************************************************************
+        
         #print('Data Successfully Loaded')
         msg = QMessageBox()
         msg.setText("Data Successfully Loaded")
@@ -614,7 +702,10 @@ class Main(QMainWindow, Ui_MainWindow):
             
         elif self.CI_radioButton.isChecked():
             self.errorBar = self.reportOptions['errorBars']['CI']
-            
+        if self.blueMethod2_radioButton.isChecked():
+            self.blueFitMethod = self.reportOptions['blueMethod']['all']
+        elif self.blueMethod1_radioButton.isChecked():
+            self.blueFitMethod = self.reportOptions['blueMethod']['one']
     
     def formatPlot(self,fig,xlabel,ylabel,title,sensitivity):
          
@@ -628,20 +719,29 @@ class Main(QMainWindow, Ui_MainWindow):
             Poly = self.polymerObjects[key]
             
             #apply blue light fit an error bars 
-            
             if self.blueLight == 0: #apply the fit if zero
-                IN2vals,IAirvals,IO2vals = Poly.subtractBlueLight(method=1,expType=self.expKey)
-                IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,IN2vals,IAirvals,IO2vals)
-                Poly.updateSumStats(self.expKey,IN2vals,IAirvals,IO2vals,IN2_Airvals,IN2_O2vals)
+                if self.expKey != 'temperature':
+                    IN2vals,IAirvals,IO2vals = Poly.subtractBlueLight(method=self.blueFitMethod,expType=self.expKey)
+                    IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,IN2vals,IAirvals,IO2vals)
+                    Poly.updateSumStats(self.expKey,IN2vals,IAirvals,IO2vals,IN2_Airvals,IN2_O2vals)
+                else:
+                    IAirvals = Poly.subtractBlueLight(method=self.blueFitMethod,expType=self.expKey)
+                    Poly.updateSumStats(self.expKey,IAir=IAirvals)
             else:
-                IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2)
-                Poly.updateSumStats(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2,IN2_Airvals,IN2_O2vals)
-                
-                
-            Poly.addErrorBars(errtype=self.errorBar)
+                if self.expKey != 'temperature':
+                    IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2)
+                    Poly.updateSumStats(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2,IN2_Airvals,IN2_O2vals)
+                else:
+                    Poly.updateSumStats(self.expKey,IAir = Poly.IAir)
                 
             if self.normalized ==0:
                 Poly.normalize(self.expKey)
+                if self.expKey != 'temperature':
+                    (IN2,IAir,IO2) = Poly.getIntensities()
+                else:
+                    
+                
+            Poly.addErrorBars(errtype=self.errorBar,expType = self.expKey)
                 
             if self.expKey == 'photobleaching':
                 #plt.plot(Poly.Time,Poly.IN2_AirAvg)
@@ -656,6 +756,11 @@ class Main(QMainWindow, Ui_MainWindow):
                     ax.errorbar(['Unaged','Aged'],Poly.IN2_AirAvg,yerr = Poly.errorBarsN2Air,capsize=6,marker='.',label=key)
                 elif sensitivity ==1:
                     ax.errorbar(['Unaged','Aged'],Poly.IN2_O2Avg,yerr = Poly.errorBarsN2O2,capsize=6,marker='.',label=key)
+                    
+            elif self.expKey == 'temperature':
+                #do stuff here 
+                ax.errorbar(Poly.Time,Poly.IAirAvg,yerr = Poly.errorBarsAir,capsize=6,marker='.',label=key)
+              
         ax.legend()
         
     def generateReport(self):
@@ -665,23 +770,32 @@ class Main(QMainWindow, Ui_MainWindow):
         else:
             if self.reportSamples: #check that user actually selected samples 
                 
-                fig1 = plt.figure(1)
-                #fig1.set_canvas(plt.gcf().canvas)
-                self.formatPlot(fig1,'Time','Intensity Ratio (Photon Counts)',
-                                'Sensitivity (IN2/Air)',sensitivity=0)
-
-                filename1 = self.outputDir +'/'+ 'N2_Air'+'_'+self.expKey+".pdf"
-                fig1.savefig(filename1,bbox_inches='tight')
-                
-                fig2 = plt.figure(2)
-                self.formatPlot(fig2,'Time','Intensity Ratio (Photon Counts)',
-                                'Sensitivity (IN2/IO2)',sensitivity=1)
-                #fig2.set_canvas(plt.gcf().canvas)
-                
-                filename2 = self.outputDir + '/'+'N2_O2'+'_'+self.expKey+".pdf"
-                fig2.savefig(filename2,bbox_inches='tight')
+                if self.expKey != 'temperature':
+                    fig1 = plt.figure(1)
+                    #fig1.set_canvas(plt.gcf().canvas)
+                    self.formatPlot(fig1,'Time (Days)','Intensity Ratio (Photon Counts)',
+                                    'Sensitivity (IN2/Air)',sensitivity=0)
+    
+                    filename1 = self.outputDir +'/'+ 'N2_Air'+'_'+self.expKey+".pdf"
+                    fig1.savefig(filename1,bbox_inches='tight')
+                    
+                    fig2 = plt.figure(2)
+                    self.formatPlot(fig2,'Time (Days)','Intensity Ratio (Photon Counts)',
+                                    'Sensitivity (IN2/IO2)',sensitivity=1)
+                    #fig2.set_canvas(plt.gcf().canvas)
+                    
+                    filename2 = self.outputDir + '/'+'N2_O2'+'_'+self.expKey+".pdf"
+                    fig2.savefig(filename2,bbox_inches='tight')
+                else:
+                    fig1 = plt.figure(1)
+                    self.formatPlot(fig1,'Time (Days)','Intensity Ratio (Photon Counts)',
+                                    'Normalized Air Intensities',sensitivity=0)
+                    filename1 = self.outputDir +'/'+ 'Air_Normal'+'_'+self.expKey+".pdf"
+                    fig1.savefig(filename1,bbox_inches='tight')                    
             else:
                 QMessageBox("Make Sure to load data before generating report data.")
+                
+        #importlib.reload(plt)
                     
             
         

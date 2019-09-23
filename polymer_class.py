@@ -85,7 +85,11 @@ class Polymer():
         self.IAir = IAir
         self.IN2 = IN2
         self.IO2 = IO2
-    
+    def getIntensities(self,expType):
+        if expType != 'temperature':
+            return (self.IN2,self.IAir,self.IO2)
+        else:
+            return (self.IAir)
     def updateRatios(self,expType,IN2,IAir,IO2):
         """
         returns (IN2_Air, IN2_O2)
@@ -106,7 +110,8 @@ class Polymer():
                     IN2_O2[key].update( {key2:(IN2[key][key2][0] / IO2[key][key2][0])})
         
         return (IN2_Air,IN2_O2)
-    def updateSumStats(self,expType,IN2,IAir,IO2,IN2_Air,IN2_O2):
+    
+    def updateSumStats(self,expType,IN2={},IAir={},IO2={},IN2_Air={},IN2_O2={}):
         
          
         AirIntensities = np.array([])
@@ -204,7 +209,23 @@ class Polymer():
             self.IAirStd = list(self.IAirStd)
             self.IN2_AirStd = list(self.IN2_AirStd)
             self.IN2_O2Std = list(self.IN2_O2Std)
-                    
+        elif expType == 'temperature':
+            for key in self.IAir.keys():
+                if AirIntensities.size==0:
+                    AirIntensities = np.array(IAir[key])
+                else:
+                    AirIntensities = np.vstack([AirIntensities,IAir[key]])
+                
+            print(AirIntensities)
+            
+            self.IAirAvg = list(np.mean(AirIntensities,axis=0))
+            
+            self.IAirStd = list(np.std(AirIntensities,axis=0))
+            
+            print('Average')
+            print(self.IAirAvg)
+            print('STDEV')
+            print(self.IAirStd)
         
     def subtractBlueLight(self,method=1,expType='photobleaching'):
         """ the method paramter is whether to subtract one value or to use unique values at each plot
@@ -225,14 +246,10 @@ class Polymer():
                     for sampKey in self.IN2.keys():
                         for day in self.O2BlueFit[sampKey].keys():
                             lightArray.append(self.O2BlueFit[sampKey][day])
-                        
+
                         IN2new = np.array(self.IN2[sampKey]) - np.array(lightArray)
                         IO2new = np.array(self.IO2[sampKey]) - np.array(lightArray)
                         IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
-                        
-                        print(IN2new)
-                        print(IO2new)
-                        print(IAirnew)
                         
                         IN2new[IN2new<=0] = 0.1
                         IO2new[IO2new<=0] = 0.1
@@ -241,10 +258,6 @@ class Polymer():
                         IN2_dict.update({sampKey:list(IN2new)})
                         IO2_dict.update({sampKey:list(IO2new)})
                         IAir_dict.update({sampKey:list(IAirnew)})
-                        
-                        #self.IN2[sampKey] = list(IN2new)
-                        #self.IO2[sampKey] = list(IO2new)
-                        #self.IAir[sampKey] = list(IAirnew)
                         
                         lightArray.clear()
                             
@@ -271,18 +284,97 @@ class Polymer():
                             #self.IO2[durKey][sampKey] = IO2new
                             #self.IAir[durKey][sampKey] = IAirnew
                             
-                return (IN2_dict,IAir_dict,IO2_dict)
+                elif expType == 'temperature':
+                    lightArray = list()
+                    for sampKey in self.IAir.keys():
+                        for day in self.AirBlueFit[sampKey].keys():
+                            lightArray.append(self.AirBlueFit[sampKey][day])
+
+                        IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
+                        
+                        IAirnew[IAirnew<=0] = 0.1
+                        
+                        IAir_dict.update({sampKey:list(IAirnew)})
+                        
+                        lightArray.clear()                    
+                        
+                return (IAir_dict)
+            
+        elif method == 2 :
+            
+            if self.O2BlueFit:
                 
+                IN2_dict = {}
+                IO2_dict = {}
+                IAir_dict = {}
+                
+                if expType == 'photobleaching':
+                    
+                    for sampKey in self.IN2.keys():
+                        
+                        lightArray = self.O2BlueFit[sampKey][list(self.O2BlueFit[sampKey].keys())[0]]
+                        
+                        IN2new = np.array(self.IN2[sampKey]) - np.array(lightArray)
+                        IO2new = np.array(self.IO2[sampKey]) - np.array(lightArray)
+                        IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
+
+                        IN2new[IN2new<=0] = 0.1
+                        IO2new[IO2new<=0] = 0.1
+                        IAirnew[IAirnew<=0] = 0.1
+                        
+                        IN2_dict.update({sampKey:list(IN2new)})
+                        IO2_dict.update({sampKey:list(IO2new)})
+                        IAir_dict.update({sampKey:list(IAirnew)})
+                            
+    
+                                
+                elif expType == 'lifetime':
+                    for durKey in self.IN2.keys():
+                        for sampKey in self.IN2[durKey].keys():
+                            
+                            IN2new = self.IN2[durKey][sampKey] - self.O2BlueFit[durKey][list(self.O2BlueFit[durKey].keys())[0]]
+                            IO2new = self.IO2[durKey][sampKey] - self.O2BlueFit[durKey][list(self.O2BlueFit[durKey].keys())[0]]
+                            IAirnew = self.IAir[durKey][sampKey] - self.O2BlueFit[durKey][list(self.O2BlueFit[durKey].keys())[0]]
+                            
+                            if IN2new <= 0 :
+                                IN2new = 0.1
+                            if IO2new <= 0 :
+                                IO2new = 0.1
+                            if IAirnew <=0:
+                                IAirnew = 0.1
+                                
+                            IN2_dict.update({durKey:{sampKey:IN2new}})
+                            IO2_dict.update({durKey:{sampKey:IO2new}})
+                            IAir_dict.update({durKey:{sampKey:IAirnew}})
+                            
+                            #self.IN2[durKey][sampKey] = IN2new
+                            #self.IO2[durKey][sampKey] = IO2new
+                            #self.IAir[durKey][sampKey] = IAirnew
+                            
+                if expType == 'temperature':
+                    
+                    for sampKey in self.IAir.keys():
+                        
+                        lightArray = self.AirBlueFit[sampKey][list(self.AirBlueFit[sampKey].keys())[0]]
+                        
+                        IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
+
+                        IAirnew[IAirnew<=0] = 0.1
+                        
+                        IAir_dict.update({sampKey:list(IAirnew)})
+               
+                return (IAir_dict)
+        
     def normalize(self,expType='photobleaching'):
         self.normalized = True
         
         if expType == 'photobleaching':
             for sampKey in self.IN2.keys():
-                """
+                
                 self.IN2[sampKey] = list(np.array(self.IN2[sampKey]) / self.IN20[sampKey])
                 self.IO2[sampKey] = list(np.array(self.IO2[sampKey]) / self.IO20[sampKey])
                 self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
-                """
+                
                 
                 self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
                 self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
@@ -293,11 +385,11 @@ class Polymer():
                     
         elif expType == 'lifetime':  #fix this 
             for sampKey in self.IN2.keys():
-                """
+                
                 self.IN2[sampKey] = list(np.array(self.IN2[sampKey]) / self.IN20[sampKey])
                 self.IO2[sampKey] = list(np.array(self.IO2[sampKey]) / self.IO20[sampKey])
                 self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
-                """
+                
                 
                 self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
                 self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
@@ -305,7 +397,15 @@ class Polymer():
                 self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
                 self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
                 
-    def addErrorBars(self,errtype=1):
+        elif expType == 'temperature':  #fix this 
+            for sampKey in self.IAir.keys():
+
+                self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
+                
+                
+                self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
+                
+    def addErrorBars(self,errtype=1,expType='photobleaching'):
         """
         1: 95% CI
         0: standard deviations
@@ -323,78 +423,99 @@ class Polymer():
         sampMeanN2Air = self.IN2_AirAvg[i4]
         sampMeanN2O2 = self.IN2_O2Avg[i5]
         """
-        sampStdAir = np.array(self.IAirStd)
-        sampStdO2 = np.array(self.IO2Std)
-        sampStdN2 = np.array(self.IN2Std)
-        sampStdN2Air = np.array(self.IN2_AirStd)
-        sampStdN2O2 = np.array(self.IN2_O2Std)
+        if expType != 'temperature':
+            sampStdAir = np.array(self.IAirStd)
+            sampStdO2 = np.array(self.IO2Std)
+            sampStdN2 = np.array(self.IN2Std)
+            sampStdN2Air = np.array(self.IN2_AirStd)
+            sampStdN2O2 = np.array(self.IN2_O2Std)
+            
+            
+            if errtype ==1: #confidence interval 95%
+                n = len(self.Category)
+                df = n-1
+                alpha = 0.05
+                tval = stats.t.ppf(1-alpha,df)                
         
-        
-        if errtype ==1: #confidence interval 95%
-            n = len(self.Category)
-            df = n-1
-            alpha = 0.05
-            tval = stats.t.ppf(1-alpha,df)                
-    
-            #self.errorBarsAir.append(tval*sampStdAir/np.sqrt(n))
-            self.errorBarsAir = list(np.array(tval*sampStdAir/np.sqrt(n)))
+                #self.errorBarsAir.append(tval*sampStdAir/np.sqrt(n))
+                self.errorBarsAir = list(np.array(tval*sampStdAir/np.sqrt(n)))
+                
+                #self.errorBarsO2.append(tval*sampStdO2/np.sqrt(n))
+                self.errorBarsO2 = list(np.array(tval*sampStdO2/np.sqrt(n)))
+                
+                #self.errorBarsN2.append(tval*sampStdN2/np.sqrt(n))
+                self.errorBarsN2 = list(np.array(tval*sampStdN2/np.sqrt(n)))
+                
+                #propagation of error code 
+                #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdAir/np.sqrt(n))/self.IAirAvg,2)
+                #self.errorBarsN2Air = list(np.sqrt(expr))
+                
+                #normal error bars 
+                self.errorBarsN2Air = list(np.array(tval*sampStdN2Air/np.sqrt(n)))
+                
+                #propagation of error code 
+                #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdO2/np.sqrt(n))/self.IO2Avg,2)
+                #self.errorBarsN2O2 = list(np.sqrt(expr))
+                
+                #normal error bars 
+                self.errorBarsN2O2 = list(np.array(tval*sampStdN2O2/np.sqrt(n)))
+                
+                
+            elif errtype ==0: #standard deviation
+                
+                #leftAir = sampMeanAir - sampStdAir
+                #rightAir = sampMeanAir + sampStdAir
+                #CIAir =(leftAir,rightAir)
+                
+                #self.errorBarsAir.append(CIAir)
+                self.errorBarsAir = list(sampStdAir)
+                
+                #leftO2 = sampMeanO2 - sampStdO2
+                #rightO2 = sampMeanO2 +sampStdO2
+                #CIO2 =(leftO2,rightO2)
+                
+                #self.errorBarsO2.append(CIO2)
+                self.errorBarsO2 = list(sampStdO2)
+                
+                #leftN2 = sampMeanN2 -sampStdN2
+                #rightN2 = sampMeanN2 + sampStdN2
+                #CIN2 =(leftN2,rightN2)
+                
+                #self.errorBarsN2.append(CIN2)
+                self.errorBarsN2 =list(sampStdN2)
+                
+                #leftN2Air = sampMeanN2Air - sampStdN2Air
+                #rightN2Air = sampMeanN2Air + sampStdN2Air
+                #CIN2Air =(leftN2Air,rightN2Air)
+                
+                self.errorBarsN2Air = list(sampStdN2Air)
+                
+                #leftN2O2 = sampMeanN2O2 -  sampStdN2O2
+                #rightN2O2 = sampMeanN2O2 +  sampStdN2O2
+                #CIN2O2 =(leftN2O2,rightN2O2)
+                
+                #self.errorBarsN2O2.append(CIN2O2)
+                self.errorBarsN2O2 = list(sampStdN2O2)
+                
+        else:
+            sampStdAir = np.array(self.IAirStd)
             
-            #self.errorBarsO2.append(tval*sampStdO2/np.sqrt(n))
-            self.errorBarsO2 = list(np.array(tval*sampStdO2/np.sqrt(n)))
+            if errtype ==1:
+                n = len(self.Category)
+                df = n-1
+                alpha = 0.05
+                tval = stats.t.ppf(1-alpha,df)
+                
+                self.errorBarsAir = list(np.array(tval*sampStdAir/np.sqrt(n)))
+                
+            elif errtype ==0:
+                
+                self.errorBarsAir = list(sampStdAir)
+                
+            print('error')
+            print(self.errorBarsAir)
+                
             
-            #self.errorBarsN2.append(tval*sampStdN2/np.sqrt(n))
-            self.errorBarsN2 = list(np.array(tval*sampStdN2/np.sqrt(n)))
-            
-            #propagation of error code 
-            #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdAir/np.sqrt(n))/self.IAirAvg,2)
-            #self.errorBarsN2Air = list(np.sqrt(expr))
-            
-            #normal error bars 
-            self.errorBarsN2Air = list(np.array(tval*sampStdN2Air/np.sqrt(n)))
-            
-            #propagation of error code 
-            #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdO2/np.sqrt(n))/self.IO2Avg,2)
-            #self.errorBarsN2O2 = list(np.sqrt(expr))
-            
-            #normal error bars 
-            self.errorBarsN2O2 = list(np.array(tval*sampStdN2O2/np.sqrt(n)))
-            
-            
-        elif errtype ==0: #standard deviation
-            
-            #leftAir = sampMeanAir - sampStdAir
-            #rightAir = sampMeanAir + sampStdAir
-            #CIAir =(leftAir,rightAir)
-            
-            #self.errorBarsAir.append(CIAir)
-            self.errorBarsAir.append(sampStdAir)
-            
-            #leftO2 = sampMeanO2 - sampStdO2
-            #rightO2 = sampMeanO2 +sampStdO2
-            #CIO2 =(leftO2,rightO2)
-            
-            #self.errorBarsO2.append(CIO2)
-            self.errorBarsO2.append(sampStdO2)
-            
-            #leftN2 = sampMeanN2 -sampStdN2
-            #rightN2 = sampMeanN2 + sampStdN2
-            #CIN2 =(leftN2,rightN2)
-            
-            #self.errorBarsN2.append(CIN2)
-            self.errorBarsN2.append(sampStdN2)
-            
-            #leftN2Air = sampMeanN2Air - sampStdN2Air
-            #rightN2Air = sampMeanN2Air + sampStdN2Air
-            #CIN2Air =(leftN2Air,rightN2Air)
-            
-            self.errorBarsN2Air.append(sampStdN2Air)
-            
-            #leftN2O2 = sampMeanN2O2 -  sampStdN2O2
-            #rightN2O2 = sampMeanN2O2 +  sampStdN2O2
-            #CIN2O2 =(leftN2O2,rightN2O2)
-            
-            #self.errorBarsN2O2.append(CIN2O2)
-            self.errorBarsN2O2.append(sampStdN2O2)
             
     
         

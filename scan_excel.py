@@ -45,12 +45,15 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
     filename is the name of the spreadsheet, key is the value for the experiment type, dye_choice is the dye to be examined
     Function returns a list of polymer objects that contain all the experiment info and more depending on what methods are used 
     """
+    #fileName = 'Temperature_Agglomeration_Pd_Analysis.xlsm'
+    #dye_choice = 'Pd'
+    #key = 'temperature'
     
     xl = pd.ExcelFile(fileName)
     
     sheetNames = xl.sheet_names
     
-    badNames = ['Analysis','Analysis 2']
+    badNames = ['Analysis','Analysis 2','Data Analysis ']
     
     Dyes = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
     
@@ -60,7 +63,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
     newShtNames = list()
     
     for sht in sheetNames:
-
+    
         if sht not in badNames:
             
             newShtNames.append(sht)
@@ -73,11 +76,15 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             
             colNames = df.columns.values.tolist()
             
-            badLabel = list(colNames[0])
+            #badLabel = list(colNames[0])
             
             tempLabel = list(colNames[1])
             
-            tempLabel[-1] = 'λ(nm)'
+            correctLabel = list(colNames[2])[-1]
+            
+            #tempLabel[-1] = 'λ(nm)'
+            
+            tempLabel[-1] = correctLabel
             
             colNames[0] = tuple(tempLabel)
             
@@ -118,6 +125,8 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
     expCollLifetime = {}
     
     Scaffolds_Photo = {}
+    
+    Scaffolds_Temp = {}
     #buffer variable to evaulate wheter we are on the same polymer or not 
     #samePoly = False
     Air0 = {}
@@ -141,7 +150,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
         
         for cols in allColNames:
             
-            if (analysisType[key] == 1): #photobleaching
+            if (analysisType[key] == 1 or analysisType[key]==3): #photobleaching
                 allTimes.append(cols[0])
                 #keep only unique times
                 #THIS IS A NEW LINE CONSIDER DELETING
@@ -157,7 +166,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             
         #gather all unique values of polymer descriptions, which vary depending on the experiment 
         
-        if(analysisType[key] == 1): #this applies to the photobleaching experiment only 
+        if(analysisType[key] == 1 or analysisType[key] ==3 ): #this applies to the photobleaching experiment and temperature only 
             basePoly.append(shtName.split(' ')[0])
             
         allGases = Remove(allGases)
@@ -311,7 +320,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                         scaffold.IAir.update({each_sht:{}})
                         scaffold.IN2.update({each_sht:{}})
                         scaffold.IO2.update({each_sht:{}})
-
+    
                 #scaffold = plymr.Polymer(scaffName)
                 scaffold.Aircurve[shtName].update({scaffName.strip():{}})
                 scaffold.O2curve[shtName].update({scaffName.strip():{}})
@@ -343,7 +352,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 dataPair = filterData.values.tolist()[0]
     
                                 scaffold.IAir[shtName][scaffName.strip()].append( dataPair[-1] )
-
+    
                                 if 'Unaged' in shtName or 'unaged' in shtName:
                                     Air0.update({scaffName:dataPair[-1]})
                                     scaffold.IAir0[scaffName.strip()] = dataPair[-1]
@@ -392,10 +401,63 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                 
                 #Scaffolds_Lifetime.append(scaffold)
         
+        elif (analysisType[key]==3): #temperature stuff
+            curPoly = basePoly[-1]
+            fullPolyName = shtName
+            
+            if curPoly in Scaffolds_Temp.keys():
+                scaffold = Scaffolds_Temp.get(curPoly)
+            else:
+                scaffold = plymr.Polymer(curPoly)
+                Scaffolds_Temp[curPoly] = scaffold
+            
+            scaffold.Aircurve.update({shtName:{}})
+            scaffold.Category.append(fullPolyName)
+            scaffold.IAir.update({shtName:list()})
+            scaffold.IAir0.update({shtName:0})
+            #sampleData.update({fullPolyname})
+            
+            for day in allTimes:
                 
+                scaffold.Time.append(day)
+                #scaffold.Time.append(day.strip())
+                scaffData = shtData[day]
+                
+                
+                for gas in allGases:
+                    
+                    for var in allVars:
+                        
+                        if ('air' in gas or 'Air' in gas):
+                            
+                            AirCurveData.update({day : scaffData[gas]})
+                        
+                            if ('lambda' in var or 'λ(nm)' in var):
+                                #scaffold.LambdaAir.append( scaffData[gas][var].values )
+                                
+                                Filter = scaffData[gas][var] >= srchWave
+                                filterData = scaffData[gas].where(Filter)
+                                filterData.dropna(inplace=True)
+                                dataPair = filterData.values.tolist()[0]
+                                
+                                scaffold.IAir[shtName].append(dataPair[-1])
+                                
+                                if day == allTimes[0]:
+                                    scaffold.IAir0[shtName] = dataPair[-1]
+                                
+                            #elif ('I' in var or 'Intensity' in var):
+                                #scaffold.IntensityAir.append(scaffData[gas][var].values)
+            
+            scaffold.Aircurve[fullPolyName] = AirCurveData
+            
+            scaffold.Time = Remove(scaffold.Time)
+    
+            Scaffolds_Temp[curPoly] = scaffold     
+            
         if (analysisType[key] == 1):
             
             if(shtName == newShtNames[-1]):
+                print('bonjour')
                 #for key in Scaffolds_Photo.keys():
                     #Scaffolds_Photo[key].updateRatios()
                     #Scaffolds_Photo[key].updateSumStats()
@@ -406,7 +468,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
         elif (analysisType[key] == 2):
             #collect the lifetime version of the data 
             #expCollLifetime[shtName] = Scaffolds_Lifetime
-            
+            print('hi')
             if (shtName == newShtNames[-1]):
                 for sampKey in expCollLifetime.keys():
                     polySample = expCollLifetime[sampKey]
@@ -429,18 +491,20 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
         
         elif (analysisType[key] == 3):
             #do nothing for now
-            print("no code yet home dawg")
-    
-    
-    
-    
-    #df.rename(columns={badLabel[0]:tempLabel[0],badLabel[1]:tempLabel[1]}, inplace = True)
-    #df4 = df3.rename(columns={badLabel[2]:tempLabel[2]})
-    
-    
-    #for sht in sheetNames:
-    #    if sht not in badNames:  
-    #        df = pd.read_excel(xl,sheet_name = sht,header = 0)
+            if(shtName == newShtNames[-1]):
+                return Scaffolds_Temp
+                print('hello')
+        
+        
+        
+        
+        #df.rename(columns={badLabel[0]:tempLabel[0],badLabel[1]:tempLabel[1]}, inplace = True)
+        #df4 = df3.rename(columns={badLabel[2]:tempLabel[2]})
+        
+        
+        #for sht in sheetNames:
+        #    if sht not in badNames:  
+        #        df = pd.read_excel(xl,sheet_name = sht,header = 0)
     
     
 if __name__=='__main__':
