@@ -680,7 +680,7 @@
              </font>
             </property>
             <property name="text">
-             <string>Run</string>
+             <string>load Data</string>
             </property>
            </widget>
           </item>

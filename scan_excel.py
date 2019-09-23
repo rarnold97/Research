@@ -282,8 +282,8 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             #consider removing this line of code  might cause issues#
             #########################################################
             scaffold.Time = Remove(scaffold.Time)
-            scaffold.updateRatios()
-            scaffold.updateSumStats()
+            #scaffold.updateRatios(key)
+            #scaffold.updateSumStats(key)
             Scaffolds_Photo[curPoly] = scaffold
             
             
@@ -291,27 +291,38 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                 
         elif (analysisType[key]==2): #lifetime experiment
             #scaff stands for scaffold.  Some polymers may differ by dye composition, so scaffold is the correct unique term 
+            
             for scaffName in allPolyNames:
                 
-                baseName = scaffName.split(' ')[0] + '_' + shtName
+                #baseName = scaffName.split(' ')[0] + '_' + shtName
+                baseName = scaffName.split(' ')[0] 
                 
                 if baseName in expCollLifetime.keys():
                     scaffold = expCollLifetime.get(baseName)
                 else:
                     scaffold = plymr.Polymer(baseName)
                     expCollLifetime[baseName] = scaffold
-                
+                    
+                    for each_sht in newShtNames:
+                        scaffold.Aircurve.update({each_sht:{}})
+                        scaffold.O2curve.update({each_sht:{}})
+                        scaffold.N2curve.update({each_sht:{}})
+                        
+                        scaffold.IAir.update({each_sht:{}})
+                        scaffold.IN2.update({each_sht:{}})
+                        scaffold.IO2.update({each_sht:{}})
+
                 #scaffold = plymr.Polymer(scaffName)
-                scaffold.Aircurve.update({scaffName:{}})
-                scaffold.O2curve.update({scaffName:{}})
-                scaffold.N2curve.update({scaffName:{}})
-                scaffold.Category.append(scaffName)
-                scaffold.IAir.update({scaffName:list()})
-                scaffold.IN2.update({scaffName:list()})
-                scaffold.IO2.update({scaffName:list()})
-                scaffold.IAir0.update({scaffName:0})
-                scaffold.IN20.update({scaffName:0})
-                scaffold.IO20.update({scaffName:0})
+                scaffold.Aircurve[shtName].update({scaffName.strip():{}})
+                scaffold.O2curve[shtName].update({scaffName.strip():{}})
+                scaffold.N2curve[shtName].update({scaffName.strip():{}})
+                scaffold.Category.append(scaffName.strip())
+                scaffold.IAir[shtName].update({scaffName.strip():list()})
+                scaffold.IN2[shtName].update({scaffName.strip():list()})
+                scaffold.IO2[shtName].update({scaffName.strip():list()})
+                scaffold.IAir0.update({scaffName.strip():0})
+                scaffold.IN20.update({scaffName.strip():0})
+                scaffold.IO20.update({scaffName.strip():0})
                 
                 scaffData = shtData[scaffName]
                 
@@ -321,7 +332,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                         
                         if ('air' in gas or 'Air' in gas):
                         
-                            scaffold.Aircurve.update({scaffName:scaffData[gas]})
+                            scaffold.Aircurve[shtName.strip()].update({scaffName.strip():scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
                                 #scaffold.LambdaAir.append( scaffData[gas][var].values )
@@ -331,16 +342,15 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 filterData.dropna(inplace=True)
                                 dataPair = filterData.values.tolist()[0]
     
-                                scaffold.IAir[scaffName].append( dataPair[-1] )
+                                scaffold.IAir[shtName][scaffName.strip()].append( dataPair[-1] )
 
                                 if 'Unaged' in shtName or 'unaged' in shtName:
                                     Air0.update({scaffName:dataPair[-1]})
-                                    scaffold.IAir0[scaffName] = dataPair[-1]
-                                    
+                                    scaffold.IAir0[scaffName.strip()] = dataPair[-1]
                             
                         elif ('N2' in gas or 'n2' in gas):
                             
-                            scaffold.N2curve.update({scaffName:scaffData[gas]})
+                            scaffold.N2curve[shtName.strip()].update({scaffName.strip():scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
                                 #scaffold.LambdaN2.append(scaffData[gas][var].values)
@@ -350,15 +360,15 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 filterData.dropna(inplace=True)
                                 dataPair = filterData.values.tolist()[0]
     
-                                scaffold.IN2[scaffName].append( dataPair[-1] )
+                                scaffold.IN2[shtName][scaffName.strip()].append( dataPair[-1] )
     
                                 if 'Unaged' in shtName or 'unaged' in shtName:
                                     N20.update({scaffName:dataPair[-1]})
-                                    scaffold.IN20[scaffName] = dataPair[-1]
+                                    scaffold.IN20[scaffName.strip()] = dataPair[-1]
                                 
                         elif('O2'in gas or 'o2' in gas):
                             
-                            scaffold.O2curve.update({scaffName:scaffData[gas]})
+                            scaffold.O2curve[shtName].update({scaffName.strip():scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
                                 #scaffold.LambdaO2.append(scaffData[gas][var].values)
@@ -368,11 +378,11 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 filterData.dropna(inplace=True)
                                 dataPair = filterData.values.tolist()[0]
                                 
-                                scaffold.IO2[scaffName].append( dataPair[-1] )
+                                scaffold.IO2[shtName][scaffName.strip()].append( dataPair[-1] )
                                 
                                 if 'Unaged'in shtName or 'unaged' in shtName:
                                     O20.update({scaffName:dataPair[-1]})
-                                    scaffold.IO20[scaffName] = dataPair[-1]
+                                    scaffold.IO20[scaffName.strip()] = dataPair[-1]
                                 
                                 
                 #scaffold.Aircurve[scaffName] = AirCurveData
@@ -398,16 +408,23 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             #expCollLifetime[shtName] = Scaffolds_Lifetime
             
             if (shtName == newShtNames[-1]):
-                for key in expCollLifetime.keys():
+                for sampKey in expCollLifetime.keys():
+                    polySample = expCollLifetime[sampKey]
+                    polySample.Category = Remove(polySample.Category)
+                    expCollLifetime[sampKey] = polySample
+                    """
                     if 'unaged' not in key or 'Unaged' not in key:
                         polySample = expCollLifetime[key]
                         polySample.IAir0.update(Air0)
                         polySample.IN20.update(N20)
                         polySample.IO20.update(O20)
                         expCollLifetime[key] = polySample
-                        
-                    expCollLifetime[key].updateRatios()
-                    expCollLifetime[key].updateSumStats()
+                    """
+                    
+                    #***************************************
+                    #expCollLifetime[sampKey].updateRatios(key)
+                    #expCollLifetime[sampKey].updateSumStats(key)
+                    #***************************************
                 return expCollLifetime
         
         elif (analysisType[key] == 3):

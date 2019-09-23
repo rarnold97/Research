@@ -32,6 +32,7 @@ class Polymer():
         self.dyeWave = 0.0
         self.dyeInt = list()
         self.dyeInt0 = 0.0
+        self.normalized = False
         
         self.IN2 = {}
         self.IO2 = {}
@@ -63,7 +64,7 @@ class Polymer():
         
         self.IN2Std = list()
         self.IAirStd = list()
-        self.IO2AStd = list()
+        self.IO2Std = list()
         self.IN2_AirStd = list()
         self.IN2_O2Std = list()
         
@@ -77,85 +78,232 @@ class Polymer():
         self.errorBarsO2 = list()
         self.errorBarsN2Air = list()
         self.errorBarsN2O2 = list()
+        self.errorBarsN2Airnorm = list()
+        self.errorBarsN2O2norm = list()
+    
+    def setIntensities(self,IAir,IN2,IO2):
+        self.IAir = IAir
+        self.IN2 = IN2
+        self.IO2 = IO2
+    
+    def updateRatios(self,expType,IN2,IAir,IO2):
+        """
+        returns (IN2_Air, IN2_O2)
+        """
+        IN2_Air = {}
+        IN2_O2 = {}
         
-    def updateRatios(self):
-        for key in self.IN2:    
-            self.IN2_Air.update({key:list(np.array(self.IN2[key])/np.array(self.IAir[key]))}) 
-            self.IN2_O2.update({key:list(np.array(self.IN2[key])/np.array(self.IO2[key]))})     
-            
-    def updateSumStats(self,expType = 'photobleaching'):
-        #fix to reflect dictionaries 
+        if expType == 'photobleaching':
+            for key in IN2:    
+                IN2_Air.update({key:list(np.array(IN2[key])/np.array(IAir[key]))}) 
+                IN2_O2.update({key:list(np.array(IN2[key])/np.array(IO2[key]))})     
+        elif expType == 'lifetime':
+            for key in IN2:
+                IN2_Air.update({key:{}})
+                IN2_O2.update({key:{}})
+                for key2 in IN2[key]:
+                    IN2_Air[key].update( {key2:(IN2[key][key2][0] / IAir[key][key2][0])})
+                    IN2_O2[key].update( {key2:(IN2[key][key2][0] / IO2[key][key2][0])})
         
+        return (IN2_Air,IN2_O2)
+    def updateSumStats(self,expType,IN2,IAir,IO2,IN2_Air,IN2_O2):
+        
+         
         AirIntensities = np.array([])
         O2Intensities = np.array([])
         N2Intensities = np.array([])
         N2_AirIntensities = np.array([])
         N2_O2Intensities = np.array([])
-            
-        for key in self.IO2.keys():
-            if AirIntensities.size==0:
-                AirIntensities = np.array(self.IAir[key])
-                O2Intensities = np.array(self.IO2[key])
-                N2Intensities = np.array(self.IN2[key])
-                N2_AirIntensities = np.array(self.IN2_Air[key])
-                N2_O2Intensities = np.array(self.IN2_O2[key])
-            else:
-                AirIntensities = np.vstack([AirIntensities,self.IAir[key]])
-                O2Intensities = np.vstack([O2Intensities,self.IO2[key]])
-                N2Intensities = np.vstack([N2Intensities,self.IN2[key]])
-                N2_AirIntensities = np.vstack([N2_AirIntensities,self.IN2_Air[key]])
-                N2_O2Intensities = np.vstack([N2_O2Intensities,self.IN2_O2[key]])
-            
-        self.IN2Avg = np.mean(N2Intensities,axis=0)
-        self.IAirAvg = np.mean(AirIntensities,axis=0)
-        self.IO2Avg = np.mean(O2Intensities,axis=0)
-        self.IN2_AirAvg = np.mean(N2_AirIntensities,axis=0)
-        self.IN2_O2Avg = np.mean(N2_O2Intensities,axis=0)
         
-        self.IN2Std = np.std(N2Intensities,axis=0)
-        self.IAirStd = np.std(AirIntensities,axis=0)
-        self.IO2Std = np.std(O2Intensities,axis=0)
-        self.IN2_AirStd = np.std(N2_AirIntensities,axis=0)
-        self.IN2_O2Std = np.std(N2_O2Intensities,axis=0)
+        if expType == 'photobleaching':
+            for key in self.IO2.keys():
+                if AirIntensities.size==0:
+                    AirIntensities = np.array(IAir[key])
+                    O2Intensities = np.array(IO2[key])
+                    N2Intensities = np.array(IN2[key])
+                    N2_AirIntensities = np.array(IN2_Air[key])
+                    N2_O2Intensities = np.array(IN2_O2[key])
+                else:
+                    AirIntensities = np.vstack([AirIntensities,IAir[key]])
+                    O2Intensities = np.vstack([O2Intensities,IO2[key]])
+                    N2Intensities = np.vstack([N2Intensities,IN2[key]])
+                    N2_AirIntensities = np.vstack([N2_AirIntensities,IN2_Air[key]])
+                    N2_O2Intensities = np.vstack([N2_O2Intensities,IN2_O2[key]])
+                
+            self.IN2Avg = list(np.mean(N2Intensities,axis=0))
+            self.IAirAvg = list(np.mean(AirIntensities,axis=0))
+            self.IO2Avg = list(np.mean(O2Intensities,axis=0))
+            self.IN2_AirAvg = list(np.mean(N2_AirIntensities,axis=0))
+            self.IN2_O2Avg = list(np.mean(N2_O2Intensities,axis=0))
+            
+            self.IN2Std = list(np.std(N2Intensities,axis=0))
+            self.IAirStd = list(np.std(AirIntensities,axis=0))
+            self.IO2Std = list(np.std(O2Intensities,axis=0))
+            self.IN2_AirStd = list(np.std(N2_AirIntensities,axis=0))
+            self.IN2_O2Std = list(np.std(N2_O2Intensities,axis=0))
+            
+        elif expType == 'lifetime':
+            IN2Avg = np.zeros(2)
+            IO2Avg = np.zeros(2)
+            IAirAvg = np.zeros(2)
+            IN2_AirAvg = np.zeros(2)
+            IN2_O2Avg = np.zeros(2)
+            
+            IN2Std = np.zeros(2)
+            IO2Std = np.zeros(2)
+            IAirStd = np.zeros(2)
+            IN2_AirStd = np.zeros(2)
+            IN2_O2Std = np.zeros(2) 
+            
+            for dur in IO2.keys():
+                print(dur)
+                AirList = list()
+                N2List = list()
+                O2List = list()
+                N2AirList = list()
+                N2O2List = list()
+                for samp in IO2[dur].keys():
+                    AirList.append(IAir[dur][samp])
+                    N2List.append(IN2[dur][samp])
+                    O2List.append(IO2[dur][samp])
+                    N2AirList.append(IN2_Air[dur][samp])
+                    N2O2List.append(IN2_O2[dur][samp])
+                if 'aged' == dur.strip() or 'Aged' == dur.strip():
+                    IN2Avg[1] = np.mean(np.array(N2List))
+                    IO2Avg[1] = np.mean(np.array(O2List))
+                    IAirAvg[1] = np.mean(np.array(AirList))
+                    IN2_AirAvg[1] = np.mean(np.array(N2AirList))
+                    IN2_O2Avg[1] = np.mean(np.array(N2O2List))
+                    
+                    IN2Std[1] = np.std(np.array(N2List))
+                    IO2Std[1] = np.std(np.array(O2List))
+                    IAirStd[1] = np.std(np.array(AirList))
+                    IN2_AirStd[1] = np.std(np.array(N2AirList))
+                    IN2_O2Std[1] = np.std(np.array(N2O2List))
+                elif 'unaged' == dur.strip() or 'Unaged' == dur.strip():
+                    IN2Avg[0] = (np.mean(np.array(N2List)))
+                    IO2Avg[0] = (np.mean(np.array(O2List)))
+                    IAirAvg[0] = (np.mean(np.array(AirList)))
+                    IN2_AirAvg[0] = (np.mean(np.array(N2AirList)))
+                    IN2_O2Avg[0] = (np.mean(np.array(N2O2List)))
+                    
+                    IN2Std[0] = (np.std(np.array(N2List)))
+                    IO2Std[0] = (np.std(np.array(O2List)))
+                    IAirStd[0] = (np.std(np.array(AirList)))
+                    IN2_AirStd[0] = (np.std(np.array(N2AirList)))
+                    IN2_O2Std[0] = (np.std(np.array(N2O2List)))     
+                    
+            self.IN2Avg = list(self.IN2Avg)
+            self.IO2Avg = list(self.IO2Avg)
+            self.IAirAvg = list(self.IAirAvg)
+            self.IN2_AirAvg = list(self.IN2_AirAvg)
+            self.IN2_O2Avg = list(self.IN2_O2Avg)
+            
+            self.IN2Std = list(self.IN2Std)
+            self.IO2Std = list(self.IO2Std)
+            self.IAirStd = list(self.IAirStd)
+            self.IN2_AirStd = list(self.IN2_AirStd)
+            self.IN2_O2Std = list(self.IN2_O2Std)
+                    
         
     def subtractBlueLight(self,method=1,expType='photobleaching'):
         """ the method paramter is whether to subtract one value or to use unique values at each plot
         0:subtract initial only
         1: subtract unique values
         
+        returns a tuple of (IN2,IAir,IO2)
+        
         """
         if method ==1:
             if self.O2BlueFit : 
+                IN2_dict = {}
+                IO2_dict = {}
+                IAir_dict = {}
+                
                 if expType == 'photobleaching':
+                    lightArray = list()
                     for sampKey in self.IN2.keys():
-                        for dayKey in self.IN2[sampKey].keys():
-                            self.IN2[sampKey][dayKey] = list(np.array(self.IN2[sampKey][dayKey]) - np.array(self.O2BlueFit[sampKey][dayKey]));
-                            self.IO2[sampKey][dayKey] = list(np.array(self.IO2[sampKey][dayKey]) - np.array(self.O2BlueFit[sampKey][dayKey]));
-                            self.IAir[sampKey][dayKey] = list(np.array(self.IAir[sampKey][dayKey]) - np.array(self.O2BlueFit[sampKey][dayKey]));
+                        for day in self.O2BlueFit[sampKey].keys():
+                            lightArray.append(self.O2BlueFit[sampKey][day])
+                        
+                        IN2new = np.array(self.IN2[sampKey]) - np.array(lightArray)
+                        IO2new = np.array(self.IO2[sampKey]) - np.array(lightArray)
+                        IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
+                        
+                        print(IN2new)
+                        print(IO2new)
+                        print(IAirnew)
+                        
+                        IN2new[IN2new<=0] = 0.1
+                        IO2new[IO2new<=0] = 0.1
+                        IAirnew[IAirnew<=0] = 0.1
+                        
+                        IN2_dict.update({sampKey:list(IN2new)})
+                        IO2_dict.update({sampKey:list(IO2new)})
+                        IAir_dict.update({sampKey:list(IAirnew)})
+                        
+                        #self.IN2[sampKey] = list(IN2new)
+                        #self.IO2[sampKey] = list(IO2new)
+                        #self.IAir[sampKey] = list(IAirnew)
+                        
+                        lightArray.clear()
+                            
                 elif expType == 'lifetime':
-                    for sampKey in self.IN2.keys():
-                        self.IN2[sampKey] = list(np.array(self.IN2) - np.array(self.O2BlueFit[sampKey]))
-                        self.IO2[sampKey] = list(np.array(self.IO2) - np.array(self.O2BlueFit[sampKey]))
-                        self.IAir[sampKey] = list(np.array(self.IAir) - np.array(self.O2BlueFit[sampKey]))
+                    for durKey in self.IN2.keys():
+                        for sampKey in self.IN2[durKey].keys():
+                            
+                            IN2new = self.IN2[durKey][sampKey] - self.O2BlueFit[durKey][sampKey]
+                            IO2new = self.IO2[durKey][sampKey] - self.O2BlueFit[durKey][sampKey]
+                            IAirnew = self.IAir[durKey][sampKey] - self.O2BlueFit[durKey][sampKey]
+                            
+                            if IN2new <= 0 :
+                                IN2new = 0.1
+                            if IO2new <= 0 :
+                                IO2new = 0.1
+                            if IAirnew <=0:
+                                IAirnew = 0.1
+                                
+                            IN2_dict.update({durKey:{sampKey:IN2new}})
+                            IO2_dict.update({durKey:{sampKey:IO2new}})
+                            IAir_dict.update({durKey:{sampKey:IAirnew}})
+                            
+                            #self.IN2[durKey][sampKey] = IN2new
+                            #self.IO2[durKey][sampKey] = IO2new
+                            #self.IAir[durKey][sampKey] = IAirnew
+                            
+                return (IN2_dict,IAir_dict,IO2_dict)
                 
     def normalize(self,expType='photobleaching'):
+        self.normalized = True
+        
         if expType == 'photobleaching':
             for sampKey in self.IN2.keys():
+                """
                 self.IN2[sampKey] = list(np.array(self.IN2[sampKey]) / self.IN20[sampKey])
                 self.IO2[sampKey] = list(np.array(self.IO2[sampKey]) / self.IO20[sampKey])
                 self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
                 """
-                for dayKey in self.IN2[sampKey].keys():
-                    self.IN2[sampKey][dayKey] = list(np.array(self.IN2[sampKey][dayKey]) / self.IN20[sampKey][dayKey]);
-                    self.IO2[sampKey][dayKey] = list(np.array(self.IO2[sampKey][dayKey]) / self.IO20[sampKey][dayKey]);
-                    self.IAir[sampKey][dayKey] = list(np.array(self.IAir[sampKey][dayKey]) / self.IAir0[sampKey][dayKey]);
-                """
+                
+                self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
+                self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
+                self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
+                self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
+                self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
+                
                     
-        elif expType == 'lifetime':
+        elif expType == 'lifetime':  #fix this 
             for sampKey in self.IN2.keys():
+                """
                 self.IN2[sampKey] = list(np.array(self.IN2[sampKey]) / self.IN20[sampKey])
                 self.IO2[sampKey] = list(np.array(self.IO2[sampKey]) / self.IO20[sampKey])
                 self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
+                """
+                
+                self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
+                self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
+                self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
+                self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
+                self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
                 
     def addErrorBars(self,errtype=1):
         """
@@ -175,55 +323,40 @@ class Polymer():
         sampMeanN2Air = self.IN2_AirAvg[i4]
         sampMeanN2O2 = self.IN2_O2Avg[i5]
         """
-            
-        sampStdAir = self.IAirStd
-        sampStdO2 = self.IO2Std
-        sampStdN2 = self.IN2Std
-        sampStdN2Air = self.IN2_AirStd
-        sampStdN2O2 = self.IN2_O2Std
+        sampStdAir = np.array(self.IAirStd)
+        sampStdO2 = np.array(self.IO2Std)
+        sampStdN2 = np.array(self.IN2Std)
+        sampStdN2Air = np.array(self.IN2_AirStd)
+        sampStdN2O2 = np.array(self.IN2_O2Std)
+        
         
         if errtype ==1: #confidence interval 95%
             n = len(self.Category)
             df = n-1
             alpha = 0.05
             tval = stats.t.ppf(1-alpha,df)                
-            
-            #leftAir = sampMeanAir - tval * sampStdAir/ np.sqrt(n)
-            #rightAir = sampMeanAir + tval * sampStdAir/np.sqrt(n)
-            #CIAir =(leftAir,rightAir)
-            
-            #self.errorBarsAir.append(CIAir)
+    
             #self.errorBarsAir.append(tval*sampStdAir/np.sqrt(n))
             self.errorBarsAir = list(np.array(tval*sampStdAir/np.sqrt(n)))
-            
-            #leftO2 = sampMeanO2 - tval * sampStdO2/ np.sqrt(n)
-            #rightO2 = sampMeanO2 + tval * sampStdO2/np.sqrt(n)
-            #CIO2 =(leftO2,rightO2)
             
             #self.errorBarsO2.append(tval*sampStdO2/np.sqrt(n))
             self.errorBarsO2 = list(np.array(tval*sampStdO2/np.sqrt(n)))
             
-            #leftN2 = sampMeanN2 - tval * sampStdN2/ np.sqrt(n)
-            #rightN2 = sampMeanN2 + tval * sampStdN2/np.sqrt(n)
-            #CIN2 =(leftN2,rightN2)
-            
             #self.errorBarsN2.append(tval*sampStdN2/np.sqrt(n))
             self.errorBarsN2 = list(np.array(tval*sampStdN2/np.sqrt(n)))
             
-            #leftN2Air = sampMeanN2Air - tval * sampStdN2Air/ np.sqrt(n)
-            #rightN2Air = sampMeanN2Air + tval * sampStdN2Air/np.sqrt(n)
-            #CIN2Air =(leftN2Air,rightN2Air)
+            #propagation of error code 
+            #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdAir/np.sqrt(n))/self.IAirAvg,2)
+            #self.errorBarsN2Air = list(np.sqrt(expr))
             
-            #self.errorBarsN2Air.append(CIN2Air)
-            #self.errorBarsN2Air.append(tval*sampStdN2Air/np.sqrt(n))
+            #normal error bars 
             self.errorBarsN2Air = list(np.array(tval*sampStdN2Air/np.sqrt(n)))
             
-            #leftN2O2 = sampMeanN2O2 - tval * sampStdN2O2/ np.sqrt(n)
-            #rightN2O2 = sampMeanN2O2 + tval * sampStdN2O2/np.sqrt(n)
-            #CIN2O2 =(leftN2O2,rightN2O2)
+            #propagation of error code 
+            #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdO2/np.sqrt(n))/self.IO2Avg,2)
+            #self.errorBarsN2O2 = list(np.sqrt(expr))
             
-            #self.errorBarsN2O2.append(CIN2O2)
-            #self.errorBarsN2O2.append(tval*sampStdN2O2/np.sqrt(n))
+            #normal error bars 
             self.errorBarsN2O2 = list(np.array(tval*sampStdN2O2/np.sqrt(n)))
             
             
