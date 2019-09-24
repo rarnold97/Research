@@ -722,25 +722,52 @@ class Main(QMainWindow, Ui_MainWindow):
             if self.blueLight == 0: #apply the fit if zero
                 if self.expKey != 'temperature':
                     IN2vals,IAirvals,IO2vals = Poly.subtractBlueLight(method=self.blueFitMethod,expType=self.expKey)
-                    IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,IN2vals,IAirvals,IO2vals)
-                    Poly.updateSumStats(self.expKey,IN2vals,IAirvals,IO2vals,IN2_Airvals,IN2_O2vals)
+                    if self.normalized == 0:
+                        IN2norm,IAirnorm,IO2norm = Poly.normalize(self.expKey,IN2vals,IAirvals,IO2vals)
+                        IN2Airnorm,IN2O2norm = Poly.updateRatios(self.expKey,IN2norm,IAirnorm,IO2norm)    
+                        Poly.updateSumStats(self.expKey,IN2norm,IAirnorm,IO2norm,IN2Airnorm,IN2O2norm)
+                        
+                    elif self.normalized == 1:
+                        IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,IN2vals,IAirvals,IO2vals)
+                        Poly.updateSumStats(self.expKey,IN2vals,IAirvals,IO2vals,IN2_Airvals,IN2_O2vals)
                 else:
                     IAirvals = Poly.subtractBlueLight(method=self.blueFitMethod,expType=self.expKey)
-                    Poly.updateSumStats(self.expKey,IAir=IAirvals)
+                    
+                    if self.normalized ==0:
+                        IAirnorm = Poly.normalize(self.expKey,IAir=IAirvals)
+                        Poly.updateSumStats(self.expKey,IAir=IAirnorm)
+                    elif self.normalized ==1:
+                        Poly.updateSumStats(self.expKey,IAir=IAirvals)
+                        
             else:
                 if self.expKey != 'temperature':
-                    IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2)
-                    Poly.updateSumStats(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2,IN2_Airvals,IN2_O2vals)
+                    if self.normalized ==0:
+                        IN2norm,IAirnorm,IO2norm = Poly.normalize(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2)
+                        IN2Airnorm,IN2O2norm = Poly.updateRatios(self.expKey,IN2norm,IAirnorm,IO2norm)
+                        Poly.updateSumStats(self.expKey,IN2norm,IAirnorm,IO2norm,IN2Airnorm,IN2O2norm)
+                    elif self.normalized ==1:
+                        IN2_Airvals, IN2_O2vals = Poly.updateRatios(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2)
+                        Poly.updateSumStats(self.expKey,Poly.IN2,Poly.IAir,Poly.IO2,IN2_Airvals,IN2_O2vals)
                 else:
-                    Poly.updateSumStats(self.expKey,IAir = Poly.IAir)
-                
+                    if self.normalized ==0:
+                        IAirnorm = Poly.normalize(self.expKey,IAir=Poly.IAir)
+                        Poly.updateSumStats(self.expKey,IAir=IAirnorm)
+                    elif self.normalized ==1:
+                        Poly.updateSumStats(self.expKey,IAir = Poly.IAir)
+            #********************************************************************
+            """
             if self.normalized ==0:
-                Poly.normalize(self.expKey)
+                #Poly.normalize(self.expKey)
                 if self.expKey != 'temperature':
-                    (IN2,IAir,IO2) = Poly.getIntensities()
+                    (IN2norm,IAirnorm,IO2norm) = Poly.normalize(self.expKey)
+                    (IN2Airnorm,IN2O2norm) = Poly.updateRatios(self.expKey,IN2norm,IAirnorm,IO2norm)
+                    Poly.updateSumStats(self.expKey,IN2norm,IAirnorm,IO2norm,IN2Airnorm,IN2O2norm)
                 else:
+                    (IAirnorm) = Poly.normalize(self.expKey)
+                    print(IAirnorm)
+                    Poly.updateSumStats(self.expKey,IAir=IAirnorm)
                     
-                
+            """    
             Poly.addErrorBars(errtype=self.errorBar,expType = self.expKey)
                 
             if self.expKey == 'photobleaching':

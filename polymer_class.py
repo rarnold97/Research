@@ -121,7 +121,7 @@ class Polymer():
         N2_O2Intensities = np.array([])
         
         if expType == 'photobleaching':
-            for key in self.IO2.keys():
+            for key in IO2.keys():
                 if AirIntensities.size==0:
                     AirIntensities = np.array(IAir[key])
                     O2Intensities = np.array(IO2[key])
@@ -161,7 +161,6 @@ class Polymer():
             IN2_O2Std = np.zeros(2) 
             
             for dur in IO2.keys():
-                print(dur)
                 AirList = list()
                 N2List = list()
                 O2List = list()
@@ -198,34 +197,29 @@ class Polymer():
                     IN2_AirStd[0] = (np.std(np.array(N2AirList)))
                     IN2_O2Std[0] = (np.std(np.array(N2O2List)))     
                     
-            self.IN2Avg = list(self.IN2Avg)
-            self.IO2Avg = list(self.IO2Avg)
-            self.IAirAvg = list(self.IAirAvg)
-            self.IN2_AirAvg = list(self.IN2_AirAvg)
-            self.IN2_O2Avg = list(self.IN2_O2Avg)
+            self.IN2Avg = list(IN2Avg)
+            self.IO2Avg = list(IO2Avg)
+            self.IAirAvg = list(IAirAvg)
+            self.IN2_AirAvg = list(IN2_AirAvg)
+            self.IN2_O2Avg = list(IN2_O2Avg)
             
-            self.IN2Std = list(self.IN2Std)
-            self.IO2Std = list(self.IO2Std)
-            self.IAirStd = list(self.IAirStd)
-            self.IN2_AirStd = list(self.IN2_AirStd)
-            self.IN2_O2Std = list(self.IN2_O2Std)
+            self.IN2Std = list(IN2Std)
+            self.IO2Std = list(IO2Std)
+            self.IAirStd = list(IAirStd)
+            self.IN2_AirStd = list(IN2_AirStd)
+            self.IN2_O2Std = list(IN2_O2Std)
         elif expType == 'temperature':
-            for key in self.IAir.keys():
+            for key in IAir.keys():
                 if AirIntensities.size==0:
                     AirIntensities = np.array(IAir[key])
                 else:
                     AirIntensities = np.vstack([AirIntensities,IAir[key]])
-                
-            print(AirIntensities)
             
             self.IAirAvg = list(np.mean(AirIntensities,axis=0))
             
             self.IAirStd = list(np.std(AirIntensities,axis=0))
             
-            print('Average')
-            print(self.IAirAvg)
-            print('STDEV')
-            print(self.IAirStd)
+
         
     def subtractBlueLight(self,method=1,expType='photobleaching'):
         """ the method paramter is whether to subtract one value or to use unique values at each plot
@@ -326,7 +320,7 @@ class Polymer():
                         IO2_dict.update({sampKey:list(IO2new)})
                         IAir_dict.update({sampKey:list(IAirnew)})
                             
-    
+                    return(IN2_dict,IAir_dict,IO2_dict)
                                 
                 elif expType == 'lifetime':
                     for durKey in self.IN2.keys():
@@ -350,7 +344,7 @@ class Polymer():
                             #self.IN2[durKey][sampKey] = IN2new
                             #self.IO2[durKey][sampKey] = IO2new
                             #self.IAir[durKey][sampKey] = IAirnew
-                            
+                    return(IN2_dict,IAir_dict,IO2_dict)
                 if expType == 'temperature':
                     
                     for sampKey in self.IAir.keys():
@@ -363,47 +357,54 @@ class Polymer():
                         
                         IAir_dict.update({sampKey:list(IAirnew)})
                
-                return (IAir_dict)
+                    return (IAir_dict)
         
-    def normalize(self,expType='photobleaching'):
+    def normalize(self,expType='photobleaching',IN2={},IAir={},IO2={}):
         self.normalized = True
-        
+        #IN2 = {}
+        #IAir = {}
+        #IO2 = {}
         if expType == 'photobleaching':
-            for sampKey in self.IN2.keys():
+            for sampKey in IN2.keys():
                 
-                self.IN2[sampKey] = list(np.array(self.IN2[sampKey]) / self.IN20[sampKey])
-                self.IO2[sampKey] = list(np.array(self.IO2[sampKey]) / self.IO20[sampKey])
-                self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
+                IN2[sampKey] = list(np.array(IN2[sampKey]) / IN2[sampKey][0])
+                IO2[sampKey] = list(np.array(IO2[sampKey]) / IO2[sampKey][0])
+                IAir[sampKey] = list(np.array(IAir[sampKey]) / IAir[sampKey][0])
                 
                 
-                self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
-                self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
-                self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
-                self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
-                self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
+                #self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
+                #self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
+                #self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
+                #self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
+                #self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
+                
+            return (IN2,IAir,IO2)
                 
                     
         elif expType == 'lifetime':  #fix this 
-            for sampKey in self.IN2.keys():
+            
+            for sampKey in IN2.keys():
                 
-                self.IN2[sampKey] = list(np.array(self.IN2[sampKey]) / self.IN20[sampKey])
-                self.IO2[sampKey] = list(np.array(self.IO2[sampKey]) / self.IO20[sampKey])
-                self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
+                IN2[sampKey] =  list(np.array(self.IN2[sampKey]) / IN2[sampKey][0])
+                IO2[sampKey] = list(np.array(self.IO2[sampKey]) / IO2[sampKey][0])
+                IAir[sampKey] = list(np.array(self.IAir[sampKey]) / IAir[sampKey][0])
                 
                 
-                self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
-                self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
-                self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
-                self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
-                self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
+                #self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
+                #self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
+                #self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
+                #self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
+                #self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
+            return(IN2,IAir,IO2)
                 
         elif expType == 'temperature':  #fix this 
-            for sampKey in self.IAir.keys():
+            
+            for sampKey in IAir.keys():
 
-                self.IAir[sampKey] = list(np.array(self.IAir[sampKey]) / self.IAir0[sampKey])
+                IAir[sampKey] = list(np.array(IAir[sampKey]) / IAir[sampKey][0])
                 
-                
-                self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
+            return(IAir)
+                #self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
                 
     def addErrorBars(self,errtype=1,expType='photobleaching'):
         """

@@ -457,7 +457,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
         if (analysisType[key] == 1):
             
             if(shtName == newShtNames[-1]):
-                print('bonjour')
                 #for key in Scaffolds_Photo.keys():
                     #Scaffolds_Photo[key].updateRatios()
                     #Scaffolds_Photo[key].updateSumStats()
@@ -468,7 +467,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
         elif (analysisType[key] == 2):
             #collect the lifetime version of the data 
             #expCollLifetime[shtName] = Scaffolds_Lifetime
-            print('hi')
             if (shtName == newShtNames[-1]):
                 for sampKey in expCollLifetime.keys():
                     polySample = expCollLifetime[sampKey]
