@@ -705,10 +705,12 @@ class Main(QMainWindow, Ui_MainWindow):
             
         elif self.CI_radioButton.isChecked():
             self.errorBar = self.reportOptions['errorBars']['CI']
+            
         if self.blueMethod2_radioButton.isChecked():
-            self.blueFitMethod = self.reportOptions['blueMethod']['all']
-        elif self.blueMethod1_radioButton.isChecked():
             self.blueFitMethod = self.reportOptions['blueMethod']['one']
+            
+        elif self.blueMethod1_radioButton.isChecked():
+            self.blueFitMethod = self.reportOptions['blueMethod']['all']
     
     def formatPlot(self,fig,xlabel,ylabel,title,sensitivity):
          
