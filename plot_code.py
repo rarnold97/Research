@@ -735,6 +735,10 @@ class Main(QMainWindow, Ui_MainWindow):
                         Poly.updateSumStats(self.expKey,IN2vals,IAirvals,IO2vals,IN2_Airvals,IN2_O2vals)
                 else:
                     IAirvals = Poly.subtractBlueLight(method=self.blueFitMethod,expType=self.expKey)
+                    print('Intensities after subtraction')
+                    print(IAirvals)
+                    print('blue')
+                    print(Poly.AirBlueFit)
                     
                     if self.normalized ==0:
                         IAirnorm = Poly.normalize(self.expKey,IAir=IAirvals)

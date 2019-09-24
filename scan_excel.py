@@ -53,7 +53,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
     
     sheetNames = xl.sheet_names
     
-    badNames = ['Analysis','Analysis 2','Data Analysis ']
+    badNames = ['Analysis','Analysis 2','Data Analysis ','Data Summaries ','Results ']
     
     Dyes = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
     
@@ -432,7 +432,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                             
                             AirCurveData.update({day : scaffData[gas]})
                         
-                            if ('lambda' in var or 'λ(nm)' in var):
+                            if ('lambda' in var or 'λ(nm)'in var or 'λ'in var):
                                 #scaffold.LambdaAir.append( scaffData[gas][var].values )
                                 
                                 Filter = scaffData[gas][var] >= srchWave

@@ -229,8 +229,8 @@ class Polymer():
         returns a tuple of (IN2,IAir,IO2)
         
         """
-        if method ==1:
-            if self.O2BlueFit : 
+        if method ==2:
+            if self.O2BlueFit or self.AirBlueFit: 
                 IN2_dict = {}
                 IO2_dict = {}
                 IAir_dict = {}
@@ -254,6 +254,8 @@ class Polymer():
                         IAir_dict.update({sampKey:list(IAirnew)})
                         
                         lightArray.clear()
+                        
+                    return(IN2_dict,IAir_dict,IO2_dict)
                             
                 elif expType == 'lifetime':
                     for durKey in self.IN2.keys():
@@ -277,6 +279,7 @@ class Polymer():
                             #self.IN2[durKey][sampKey] = IN2new
                             #self.IO2[durKey][sampKey] = IO2new
                             #self.IAir[durKey][sampKey] = IAirnew
+                    return(IN2_dict,IAir_dict,IO2_dict)
                             
                 elif expType == 'temperature':
                     lightArray = list()
@@ -292,11 +295,11 @@ class Polymer():
                         
                         lightArray.clear()                    
                         
-                return (IAir_dict)
+                    return (IAir_dict)
             
-        elif method == 2 :
+        elif method == 1 :
             
-            if self.O2BlueFit:
+            if self.O2BlueFit or self.AirBlueFit:
                 
                 IN2_dict = {}
                 IO2_dict = {}
@@ -350,7 +353,7 @@ class Polymer():
                     for sampKey in self.IAir.keys():
                         
                         lightArray = self.AirBlueFit[sampKey][list(self.AirBlueFit[sampKey].keys())[0]]
-                        
+
                         IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
 
                         IAirnew[IAirnew<=0] = 0.1
