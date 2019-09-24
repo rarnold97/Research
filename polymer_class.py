@@ -435,7 +435,7 @@ class Polymer():
             if errtype ==1: #confidence interval 95%
                 n = len(self.Category)
                 df = n-1
-                alpha = 0.05
+                alpha = 0.025
                 tval = stats.t.ppf(1-alpha,df)                
         
                 #self.errorBarsAir.append(tval*sampStdAir/np.sqrt(n))

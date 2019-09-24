@@ -60,6 +60,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.peakWave = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
         self.method = 0 #0 for extrapolation, 1 for interpolation
         self.blueFitMethod =- 1 
+        self.R2file = '' 
         
         #reporting variables
         
@@ -135,6 +136,8 @@ class Main(QMainWindow, Ui_MainWindow):
         
         self.LB2_lineEdit.textEdited.connect(self.lb2Edit)
         self.RB2_lineEdit.textEdited.connect(self.rb2Edit)
+        
+        self.R2_lineEdit.textEdited.connect(self.setR2file)
         
         #clear the fitted curve from plot
         self.clearButton.clicked.connect(self.clearFit)
@@ -218,9 +221,9 @@ class Main(QMainWindow, Ui_MainWindow):
                 self.selectedSample = sample
                 self.selectedDay = daySelected
                 
-                self.N2Data = self.selectedPoly.N2curve[sample][daySelected]
-                self.O2Data = self.selectedPoly.O2curve[sample][daySelected]
-                self.AirData = self.selectedPoly.Aircurve[sample][daySelected]
+                self.N2Data = self.selectedPoly.N2curve[sample][float(daySelected)]
+                self.O2Data = self.selectedPoly.O2curve[sample][float(daySelected)]
+                self.AirData = self.selectedPoly.Aircurve[sample][float(daySelected)]
             elif self.expKey == 'lifetime':
                 sample = item.text(0)
                 parent1 = item.parent()
@@ -409,7 +412,7 @@ class Main(QMainWindow, Ui_MainWindow):
         if self.expKey == 'photobleaching':
             name = polyIDs[0]
             sample = polyIDs[1]
-            day = polyIDs[2]
+            day = float(polyIDs[2])
             waveLength = self.peakWave[self.dye]
             blueFitVal = fit.applyFit(waveLength,self.paramO2,self.fitType)
             poly = self.polymerObjects[name]
@@ -492,7 +495,7 @@ class Main(QMainWindow, Ui_MainWindow):
                         sampChild = QTreeWidgetItem(li,[cat])
                         li.addChild(sampChild)
                         for t in poly.Time:
-                            timeChild = QTreeWidgetItem(sampChild,[t])
+                            timeChild = QTreeWidgetItem(sampChild,[str(t)])
                             
                             sampChild.addChild(timeChild)
                     
@@ -788,7 +791,8 @@ class Main(QMainWindow, Ui_MainWindow):
                 #do stuff here 
                 ax.errorbar(Poly.Time,Poly.IAirAvg,yerr = Poly.errorBarsAir,capsize=6,marker='.',label=key)
               
-        ax.legend()
+        ax.legend(loc='upper right')
+        
         
     def generateReport(self):
         sns.set_context('poster')
@@ -819,12 +823,25 @@ class Main(QMainWindow, Ui_MainWindow):
                                     'Normalized Air Intensities',sensitivity=0)
                     filename1 = self.outputDir +'/'+ 'Air_Normal'+'_'+self.expKey+".pdf"
                     fig1.savefig(filename1,bbox_inches='tight')                    
+                
+                self.saveR2()
             else:
                 QMessageBox("Make Sure to load data before generating report data.")
                 
         #importlib.reload(plt)
-                    
-            
+        
+    def setR2file(self,item):
+        self.R2file = self.outputDir +item+".xlsx"
+    def saveR2(self):
+        R2 = {}
+        for key in self.reportSamples.keys():
+            if self.expKey != 'temperature':
+                R2.update({self.reportSamples[key].name:self.reportSamples[key].O2BlueFit})
+            else:
+                R2.update({self.reportSamples[key].name:self.reportSamples[key].AirBlueFit})
+        R2df = pd.DataFrame.from_dict(R2)
+        R2df.to_excel(self.R2file)
+        
         
         
 if __name__ == "__main__":

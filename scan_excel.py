@@ -211,8 +211,8 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             
             for day in allTimes:
                 
-                #scaffold.Time.append(day)
-                scaffold.Time.append(day.strip())
+                scaffold.Time.append(day)
+                #scaffold.Time.append(day.strip())
                 scaffData = shtData[day]
                 
                 
