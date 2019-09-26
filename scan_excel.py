@@ -53,7 +53,7 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
     
     sheetNames = xl.sheet_names
     
-    badNames = ['Analysis','Analysis 2','Data Analysis ','Data Summaries ','Results ']
+    badNames = ['Analysis','Analysis 2','Data Analysis ','Data Summaries ','Results ','Aged','Unaged']
     
     Dyes = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
     

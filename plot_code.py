@@ -39,6 +39,7 @@ from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QListWidget
 from PyQt5.QtWidgets import QAbstractItemView
+from PyQt5.QtWidgets import QInputDialog
         
 
 class Main(QMainWindow, Ui_MainWindow):
@@ -59,7 +60,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.currentFigKey = "" 
         self.peakWave = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
         self.method = 0 #0 for extrapolation, 1 for interpolation
-        self.blueFitMethod =- 1 
+        self.blueFitMethod = 1 
         self.R2file = '' 
         
         #reporting variables
@@ -179,6 +180,8 @@ class Main(QMainWindow, Ui_MainWindow):
         self.blueMethod2_radioButton.toggled.connect(self.setOptions)
         
         self.blueMethod1_radioButton.setChecked(True)
+        
+        self.excelOutput_pushButton.clicked.connect(self.excelOutput_clicked)
         
     def closeEvent(self,event):
         print("Exiting Program")
@@ -848,8 +851,73 @@ class Main(QMainWindow, Ui_MainWindow):
         R2df = pd.DataFrame.from_dict(R2)
         R2df.to_excel(self.R2file)
         
+    def excelOutput_clicked(self):
+        text,ok = QInputDialog.getText(self,'Text Input Dialog','Enter Spreadsheet name:')
+        if ok:
+            if self.polymerObjects:
+                #self.storeBlueVals(text)
+                self.printIntData(text)
+            else:
+                QMessageBox("Please Load Data before attempting to saving data.")
+    def storeBlueVals(self,expTitle):
+        fileName = expTitle + '_BlueLightVals.xlsx'
+        writer = pd.ExcelWriter(fileName, engine='xlsxwriter')
+        for polymerName in self.reportSamples.keys():
+            if self.reportSamples[polymerName].O2BlueFit:
+                lightDic = self.reportSamples[polymerName].O2BlueFit
+                
+                df = pd.DataFrame.from_dict(lightDic,orient='index')
+                fileName = polymerName + 'Blu'
+                df.to_excel(writer,sheet_name = polymerName)
+            
+    def printIntData(self,expTitle):
+        fileName = expTitle + '.xlsx'
+        #writer = pd.ExcelWriter(fileName,engine='xlsxwriter')
+        frames = []
+        for polymerName in self.reportSamples.keys():
+            poly = self.reportSamples[polymerName]
+            IAir = poly.IAir
+            IN2 = poly.IN2
+            IO2 = poly.IO2                
+
+            for day,i in zip(poly.Time,range(len(poly.Time))):
+                for sample in IAir.keys():
+                    if self.expKey !='temperature':
+                        if poly.O2BlueFit:
+                            if self.blueFitMethod == 1:
+                                Blue = poly.O2BlueFit[sample][list(poly.O2BlueFit[sample].keys())[0]]
+                            else:
+                                Blue = poly.O2BlueFit[sample][day]
+                        else:
+                            Blue = 0 
+                    else:
+                        if poly.AirBlueFit:
+                            if self.blueFitMethod == 1:
+                                Blue = poly.AirBlueFit[sample][list(poly.AirBlueFit[sample].keys())[0]]
+                            else:
+                                Blue = poly.AirBlueFit[sample][day]
+                        else:
+                            Blue = 0 
+                            
+                    data ={'Day':day,
+                            'Polymer':polymerName,'Sample':sample,
+                           'IN2 (Photon Counts)':IN2[sample][i],
+                           'IAir (Photon Counts)':IAir[sample][i],
+                           'IO2 (Photon Counts)':IO2[sample][i],
+                           'blue light (Photon Counts)':Blue}
+                    S = pd.Series(data).to_frame()
+                    df = S.swapaxes("index","columns")
+                    frames.append(df)
+            allDf = pd.concat(frames)
+            allDf.set_index('Day')
+            allDf.to_excel(fileName,sheet_name='Intensity Data')      
         
-        
+        message = "Data Saved to: " + fileName
+        msg = QMessageBox()
+        msg.setText(message)
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.exec_()
+
 if __name__ == "__main__":
     import sys
     #from PyQt5 import QtGui

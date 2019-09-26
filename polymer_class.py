@@ -106,9 +106,10 @@ class Polymer():
                 IN2_Air.update({key:{}})
                 IN2_O2.update({key:{}})
                 for key2 in IN2[key]:
-                    IN2_Air[key].update( {key2:(IN2[key][key2][0] / IAir[key][key2][0])})
-                    IN2_O2[key].update( {key2:(IN2[key][key2][0] / IO2[key][key2][0])})
-        
+                    #IN2_Air[key].update( {key2:(IN2[key][key2][0] / IAir[key][key2][0])})
+                    #IN2_O2[key].update( {key2:(IN2[key][key2][0] / IO2[key][key2][0])})
+                    IN2_Air[key].update( {key2:(IN2[key][key2] / IAir[key][key2])})
+                    IN2_O2[key].update( {key2:(IN2[key][key2] / IO2[key][key2])})
         return (IN2_Air,IN2_O2)
     
     def updateSumStats(self,expType,IN2={},IAir={},IO2={},IN2_Air={},IN2_O2={}):
@@ -314,7 +315,7 @@ class Polymer():
                         IN2new = np.array(self.IN2[sampKey]) - np.array(lightArray)
                         IO2new = np.array(self.IO2[sampKey]) - np.array(lightArray)
                         IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
-
+                        
                         IN2new[IN2new<=0] = 0.1
                         IO2new[IO2new<=0] = 0.1
                         IAirnew[IAirnew<=0] = 0.1
