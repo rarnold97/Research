@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import importlib
+import R_square as R2
 
 from PyQt5.uic import loadUiType
 
@@ -329,16 +330,28 @@ class Main(QMainWindow, Ui_MainWindow):
             yf = yfitted.values
             yf = yf[:ydata.size]
             
-            R = self.RSquared(ydata=yi,yfit = yf)
+            R = R2.coefficient_of_determination(yi,yf)
             
             if self.expKey == 'photobleaching':
                 dayDict = {self.selectedDay:R}
                 sampleDict = {self.selectedSample:dayDict}
-                self.selectedPoly.RSquare.update(sampleDict)
+                
+                if self.selectedSample in self.selectedPoly.RSquare.keys():
+                    self.selectedPoly.RSquare[self.selectedSample].update(dayDict)
+                else:
+                    self.selectedPoly.RSquare.update(sampleDict)
+                    
             elif self.expKey == 'lifetime':
-                self.selectedPoly.RSquare.update({self.selectedDuration:{self.selectedSample:R}})
+                if self.selectedDuration in self.selectedPoly.RSquare.keys():
+                    self.selectedPoly.RSquare[self.selectedDuration].update({self.selectedSample:R})
+                else:
+                    self.selectedPoly.RSquare.update({self.selectedDuration:{self.selectedSample:R}})
             elif self.expKey == 'temperature':
-                self.selectedPolt.RSquare.update({self.selectedSample:{self.selectedDay:R}})
+                
+                if self.selectedSample in self.selectedPoly.RSquare.keys():
+                    self.selectedPoly.RSquare[self.selectedSample].update({self.selectedDay:R})
+                else:
+                    self.selectedPoly.RSquare.update({self.selectedSample:{self.selectedDay:R}})
                 
             self.polymerObjects[self.selectedPoly.name] = self.selectedPoly
         
@@ -375,16 +388,25 @@ class Main(QMainWindow, Ui_MainWindow):
             yi = ydata.values
             yf = yfitted.values
             
-            R = self.RSquared(ydata=yi,yfit=yf)
+            R = R2.coefficient_of_determination(yi,yf)
             
             if self.expKey == 'photobleaching':
                 dayDict = {self.selectedDay:R}
                 sampleDict = {self.selectedSample:dayDict}
-                self.selectedPoly.RSquare.update(sampleDict)
+                if self.selectedSample in self.selectedPoly.RSquare.keys():
+                    self.selectedPoly.RSquare[self.selectedSample].update(dayDict)
+                else:
+                    self.selectedPoly.RSquare.update(sampleDict)
             elif self.expKey == 'lifetime':
-                self.selectedPoly.RSquare.update({self.selectedDuration:{self.selectedSample:R}})
+                if self.selectedDuration in self.selectedPoly.RSquare.keys():
+                    self.selectedPoly.RSquare[self.selectedDuration].update({self.selectedSample:R})
+                else:
+                    self.selectedPoly.RSquare.update({self.selectedDuration:{self.selectedSample:R}})
             elif self.expKey == 'temperature':
-                self.selectedPoly.RSquare.update({self.selectedSample:{self.selectedDay:R}})
+                if self.selectedSample in self.selectedPoly.RSquare.keys():
+                    self.selectedPoly.RSquare[self.selectedSample].update({self.selectedDay:R})
+                else:
+                    self.selectedPoly.RSquare.update({self.selectedSample:{self.selectedDay:R}})
             
         #start generating plot data here 
         #going to fit based on the air curve data
@@ -878,7 +900,7 @@ class Main(QMainWindow, Ui_MainWindow):
             poly = self.reportSamples[polymerName]
             IAir = poly.IAir
             IN2 = poly.IN2
-            IO2 = poly.IO2                
+            IO2 = poly.IO2              
 
             for day,i in zip(poly.Time,range(len(poly.Time))):
                 for sample in IAir.keys():
@@ -886,25 +908,30 @@ class Main(QMainWindow, Ui_MainWindow):
                         if poly.O2BlueFit:
                             if self.blueFitMethod == 1:
                                 Blue = poly.O2BlueFit[sample][list(poly.O2BlueFit[sample].keys())[0]]
+                                R = poly.RSquare[sample][list(poly.RSquare[sample].keys())[0]]
                             else:
                                 Blue = poly.O2BlueFit[sample][day]
+                                R = poly.RSquare[sample][list(poly.RSquare[sample].keys())[i]]
                         else:
                             Blue = 0 
+                            R = 0
                     else:
                         if poly.AirBlueFit:
                             if self.blueFitMethod == 1:
                                 Blue = poly.AirBlueFit[sample][list(poly.AirBlueFit[sample].keys())[0]]
+                                R = poly.RSquare[sample][list(poly.RSquare[sample].keys())[0]]
                             else:
                                 Blue = poly.AirBlueFit[sample][day]
+                                R = poly.RSquare[sample][list(poly.RSquare[sample].keys())[i]]
                         else:
                             Blue = 0 
-                            
                     data ={'Day':day,
                             'Polymer':polymerName,'Sample':sample,
                            'IN2 (Photon Counts)':IN2[sample][i],
                            'IAir (Photon Counts)':IAir[sample][i],
                            'IO2 (Photon Counts)':IO2[sample][i],
-                           'blue light (Photon Counts)':Blue}
+                           'blue light (Photon Counts)':Blue,
+                           'R^2 for Blue fit':R}
                     S = pd.Series(data).to_frame()
                     df = S.swapaxes("index","columns")
                     frames.append(df)
@@ -912,11 +939,12 @@ class Main(QMainWindow, Ui_MainWindow):
             allDf.set_index('Day')
             allDf.to_excel(fileName,sheet_name='Intensity Data')      
         
-        message = "Data Saved to: " + fileName
-        msg = QMessageBox()
-        msg.setText(message)
-        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-        msg.exec_()
+        if allDf.size >0:
+            message = "Data Saved to: " + fileName
+            msg = QMessageBox()
+            msg.setText(message)
+            msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            msg.exec_()
 
 if __name__ == "__main__":
     import sys
