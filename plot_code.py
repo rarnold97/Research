@@ -118,8 +118,8 @@ class Main(QMainWindow, Ui_MainWindow):
         #define dropbox for user to select dye 
         #assuming first item in list below is the default selected item.  hard coded for now due to lack of dev time
         
-        self.dye_comboBox.addItem("Pt")
         self.dye_comboBox.addItem("Pd")
+        self.dye_comboBox.addItem("Pt")
         self.dye_comboBox.addItem("Ru")
         
         self.dye_comboBox.currentTextChanged.connect(self.setDye)
@@ -183,6 +183,8 @@ class Main(QMainWindow, Ui_MainWindow):
         self.blueMethod1_radioButton.setChecked(True)
         
         self.excelOutput_pushButton.clicked.connect(self.excelOutput_clicked)
+        
+        self.N2curve_Button.clicked.connect(self.N2curve_Button_clicked)
         
     def closeEvent(self,event):
         print("Exiting Program")
@@ -937,7 +939,7 @@ class Main(QMainWindow, Ui_MainWindow):
                     frames.append(df)
             allDf = pd.concat(frames)
             allDf.set_index('Day')
-            allDf.to_excel(fileName,sheet_name='Intensity Data')      
+            allDf.to_excel(fileName,sheet_name='Intensity Data',index=False)      
         
         if allDf.size >0:
             message = "Data Saved to: " + fileName
@@ -946,6 +948,46 @@ class Main(QMainWindow, Ui_MainWindow):
             msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
             msg.exec_()
 
+    def storeCurves(self,title):
+        if self.reportSamples:
+            curveData = {}
+            fileName = title + '.xlsx'
+            writer = pd.ExcelWriter(fileName, engine='xlsxwriter')
+            for name in self.reportSamples.keys():
+                poly = self.reportSamples[name]
+                for sample in poly.N2curve.keys():
+                    for day in poly.N2curve[sample].keys():
+                        
+                        data = poly.N2curve[sample][day]
+                        intHeader = data.columns.tolist()[1]    
+                        
+                        if day == list(poly.N2curve[sample].keys())[0] and sample == list(poly.N2curve.keys())[0]:
+                            waveHeader = data.columns.tolist()[0]
+                            waveData = data[waveHeader].values
+                            curveData['wavelengths(nm)'] = waveData
+                        
+                        if day in curveData.keys():
+                            curveData[day] = curveData[day] + data[intHeader].values
+                        else:
+                            curveData[day] = data[intHeader].values
+                    
+                for key in curveData.keys(): #average the data by the number of samples 
+                    curveData[key] = curveData[key] / len(list(poly.N2curve.keys()))
+                
+                
+                df = pd.DataFrame.from_dict(curveData)
+                df.to_excel(writer,sheet_name=name,index=False)
+                curveData.clear()
+                
+            writer.save()
+
+    def N2curve_Button_clicked(self):
+        text,ok = QInputDialog.getText(self,'Text Input Dialog','Enter Spreadsheet name:')
+        if ok:
+            if self.polymerObjects:
+                self.storeCurves(text)
+            else:
+                QMessageBox("Please Load Data before attempting to saving data.")                   
 if __name__ == "__main__":
     import sys
     #from PyQt5 import QtGui
