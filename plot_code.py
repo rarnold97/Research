@@ -121,6 +121,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.dye_comboBox.addItem("Pd")
         self.dye_comboBox.addItem("Pt")
         self.dye_comboBox.addItem("Ru")
+        self.dye_comboBox.addItem("custom")
         
         self.dye_comboBox.currentTextChanged.connect(self.setDye)
         
@@ -587,13 +588,19 @@ class Main(QMainWindow, Ui_MainWindow):
         
     def setDye(self,item):
         self.dye = item
+        if "custom" in item:
+            wave,ok = QInputDialog.getText(self,'Text Input Dialog','Enter custom peak wavelength (nm):')
+            self.peakWave.update({"custom":float(wave)})
         
     def run(self):
         self.sample_treeWidget.clear()
         #self.polymerObjects.update( SE.loadExcelData(self.xlFileName,self.expKey,self.dye) ) 
         
         #*******************************************************************************
-        self.polymerObjects =  SE.loadExcelData(self.xlFileName,self.expKey,self.dye)  
+        if "custom" in self.dye:
+            self.polymerObjects =  SE.loadExcelData(self.xlFileName,self.expKey,self.dye,self.peakWave[self.dye])  
+        else:
+            self.polymerObjects =  SE.loadExcelData(self.xlFileName,self.expKey,self.dye,0)  
         #*******************************************************************************
         
         #print('Data Successfully Loaded')

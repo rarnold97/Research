@@ -40,7 +40,7 @@ def uniqueDict(dict,key,obj):
 #fileName = 'Photobleaching_test_refined.xlsx'
 #fileName = 'Photobleaching_test_refined.xlsm'
 
-def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleaching', dye_choice='Pt'):
+def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleaching', dye_choice='Pd',customWave=0):
     """
     filename is the name of the spreadsheet, key is the value for the experiment type, dye_choice is the dye to be examined
     Function returns a list of polymer objects that contain all the experiment info and more depending on what methods are used 
@@ -56,6 +56,9 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
     badNames = ['Analysis','Analysis 2','Data Analysis ','Data Summaries ','Results ','Aged','Unaged']
     
     Dyes = {'Pd':673.93,'Pt':652.35,'Ru':604.49}
+    
+    if dye_choice not in Dyes.keys():
+        Dyes.update({dye_choice:customWave})
     
     analysisType  = {'photobleaching': 1, 'lifetime':2, 'temperature':3}
     
