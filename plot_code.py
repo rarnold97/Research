@@ -987,6 +987,11 @@ class Main(QMainWindow, Ui_MainWindow):
                 curveData.clear()
                 
             writer.save()
+            message = "Data Saved to: " + fileName
+            msg = QMessageBox()
+            msg.setText(message)
+            msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            msg.exec_()
 
     def N2curve_Button_clicked(self):
         text,ok = QInputDialog.getText(self,'Text Input Dialog','Enter Spreadsheet name:')
@@ -994,7 +999,7 @@ class Main(QMainWindow, Ui_MainWindow):
             if self.polymerObjects:
                 self.storeCurves(text)
             else:
-                QMessageBox("Please Load Data before attempting to saving data.")                   
+                QMessageBox("Please Load Data before attempting to saving data.")        
 if __name__ == "__main__":
     import sys
     #from PyQt5 import QtGui
