@@ -979,7 +979,8 @@ class Main(QMainWindow, Ui_MainWindow):
                             curveData[day] = data[intHeader].values
                     
                 for key in curveData.keys(): #average the data by the number of samples 
-                    curveData[key] = curveData[key] / len(list(poly.N2curve.keys()))
+                    if key != 'wavelengths(nm)':
+                        curveData[key] = curveData[key] / len(list(poly.N2curve.keys()))
                 
                 
                 df = pd.DataFrame.from_dict(curveData)
