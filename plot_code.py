@@ -962,13 +962,16 @@ class Main(QMainWindow, Ui_MainWindow):
             writer = pd.ExcelWriter(fileName, engine='xlsxwriter')
             for name in self.reportSamples.keys():
                 poly = self.reportSamples[name]
-                for sample in poly.N2curve.keys():
-                    for day in poly.N2curve[sample].keys():
-                        
-                        data = poly.N2curve[sample][day]
-                        intHeader = data.columns.tolist()[1]    
-                        
-                        if day == list(poly.N2curve[sample].keys())[0] and sample == list(poly.N2curve.keys())[0]:
+                if self.expKey!= 'temperature':
+                    loop_curves = poly.N2curve
+                else:
+                    loop_curves = poly.Aircurve
+               
+                for sample in loop_curves.keys():
+                    for day in loop_curves[sample].keys():
+                        data = loop_curves[sample][day]
+                        intHeader = data.columns.tolist()[1]
+                        if day == list(loop_curves[sample].keys())[0] and sample == list(loop_curves.keys())[0]:
                             waveHeader = data.columns.tolist()[0]
                             waveData = data[waveHeader].values
                             curveData['wavelengths(nm)'] = waveData
@@ -980,7 +983,7 @@ class Main(QMainWindow, Ui_MainWindow):
                     
                 for key in curveData.keys(): #average the data by the number of samples 
                     if key != 'wavelengths(nm)':
-                        curveData[key] = curveData[key] / len(list(poly.N2curve.keys()))
+                        curveData[key] = curveData[key] / len(list(loop_curves.keys()))
                 
                 
                 df = pd.DataFrame.from_dict(curveData)
