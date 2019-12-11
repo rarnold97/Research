@@ -909,7 +909,10 @@ class Main(QMainWindow, Ui_MainWindow):
             poly = self.reportSamples[polymerName]
             IAir = poly.IAir
             IN2 = poly.IN2
-            IO2 = poly.IO2              
+            IO2 = poly.IO2           
+            
+            if self.expKey == 'temperature':
+                IAir0 = poly.IAir0
 
             for day,i in zip(poly.Time,range(len(poly.Time))):
                 for sample in IAir.keys():
@@ -934,13 +937,23 @@ class Main(QMainWindow, Ui_MainWindow):
                                 R = poly.RSquare[sample][list(poly.RSquare[sample].keys())[i]]
                         else:
                             Blue = 0 
-                    data ={'Day':day,
-                            'Polymer':polymerName,'Sample':sample,
-                           'IN2 (Photon Counts)':IN2[sample][i],
-                           'IAir (Photon Counts)':IAir[sample][i],
-                           'IO2 (Photon Counts)':IO2[sample][i],
-                           'blue light (Photon Counts)':Blue,
-                           'R^2 for Blue fit':R}
+                            R=0
+                    if self.expKey != 'temperature':
+                        data ={'Day':day,
+                                'Polymer':polymerName,'Sample':sample,
+                               'IN2 (Photon Counts)':IN2[sample][i],
+                               'IAir (Photon Counts)':IAir[sample][i],
+                               'IO2 (Photon Counts)':IO2[sample][i],
+                               'blue light (Photon Counts)':Blue,
+                               'R^2 for Blue fit':R}
+                    else:
+                        data ={'Day':day,
+                                'Polymer':polymerName,'Sample':sample,
+                               'IAir (Photon Counts)':IAir[sample][i],
+                               'IAir0':IAir0[sample],
+                               'blue light (Photon Counts)':Blue,
+                               'R^2 for Blue fit':R}      
+                        
                     S = pd.Series(data).to_frame()
                     df = S.swapaxes("index","columns")
                     frames.append(df)
