@@ -52,7 +52,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.fig_dict = {}
         self.xlFileName = ""
         self.outputDir = ""
-        self.dye = "Pt"
+        self.dye = "Pd"
         self.expKey = "photobleaching"
         self.polymerObjects ={}
         self.fitType = "expSingle"
@@ -186,6 +186,8 @@ class Main(QMainWindow, Ui_MainWindow):
         self.excelOutput_pushButton.clicked.connect(self.excelOutput_clicked)
         
         self.N2curve_Button.clicked.connect(self.N2curve_Button_clicked)
+        
+        self.volmerButton.clicked.connect(self.volmerClicked)
         
     def closeEvent(self,event):
         print("Exiting Program")
@@ -913,6 +915,8 @@ class Main(QMainWindow, Ui_MainWindow):
             
             if self.expKey == 'temperature':
                 IAir0 = poly.IAir0
+            else:
+                IN20 = poly.IN20
 
             for day,i in zip(poly.Time,range(len(poly.Time))):
                 for sample in IAir.keys():
@@ -944,6 +948,7 @@ class Main(QMainWindow, Ui_MainWindow):
                                'IN2 (Photon Counts)':IN2[sample][i],
                                'IAir (Photon Counts)':IAir[sample][i],
                                'IO2 (Photon Counts)':IO2[sample][i],
+                               'IN20 Photon Counts)':IN20[sample],
                                'blue light (Photon Counts)':Blue,
                                'R^2 for Blue fit':R}
                     else:
@@ -967,7 +972,88 @@ class Main(QMainWindow, Ui_MainWindow):
             msg.setText(message)
             msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
             msg.exec_()
-
+    def volmerClicked(self):
+        text,ok = QInputDialog.getText(self,'Text Input Dialog','Enter Spreadsheet name:')
+        if ok:
+            if self.polymerObjects:
+                #self.storeBlueVals(text)
+                self.printVolmer(text)
+            else:
+                QMessageBox("Please Load Data before attempting to saving data.")        
+    
+    def printVolmer(self,title):
+        fileName = title + '.xlsx'
+        frames = []
+        for polymerName in self.reportSamples.keys():
+            poly = self.reportSamples[polymerName]
+            IAir = poly.IAir
+            IN2 = poly.IN2
+            IO2 = poly.IO2     
+            
+            if self.expKey == 'temperature':
+                message = "Cannot Generate Stern Volmer plot with aggregation experiment"
+                msg = QMessageBox()
+                msg.setText(message)
+                msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                msg.exec_() 
+                return
+            
+            for sample in IAir.keys():
+                for day,i in zip(poly.Time,range(len(poly.Time))):
+                
+                    if poly.O2BlueFit:
+                        if self.blueFitMethod == 1:
+                            Blue = poly.O2BlueFit[sample][list(poly.O2BlueFit[sample].keys())[0]]
+                            R = poly.RSquare[sample][list(poly.RSquare[sample].keys())[0]]
+                        else:
+                            Blue = poly.O2BlueFit[sample][day]
+                            R = poly.RSquare[sample][list(poly.RSquare[sample].keys())[i]]
+                    else:
+                        Blue = 0 
+                        R = 0                    
+                    #Nitrogen intensity
+                    data = {'Day':day,
+                            'Polymer':polymerName,
+                            'Oxygen %':0,
+                            'Intensity':IN2[sample][i]/IN2[sample][i],
+                            'Blue Fit':Blue}
+                    S1 = pd.Series(data).to_frame()
+                    df1 = S1.swapaxes("index","columns")
+                    frames.append(df1)
+                    
+                    # Air Intensity
+                    data = {'Day':day,
+                    'Polymer':polymerName,
+                    'Oxygen %':21,
+                    'Intensity':IN2[sample][i]/IAir[sample][i],
+                    'Blue Fit':Blue                            
+                    }
+                    S2 = pd.Series(data).to_frame()
+                    df2 = S2.swapaxes("index","columns")
+                    frames.append(df2)
+                    
+                    #O2 Intensity
+                    data = {'Day':day,
+                    'Polymer':polymerName,
+                    'Oxygen %':100,
+                    'Intensity':IN2[sample][i]/IO2[sample][i],
+                    'Blue Fit':Blue                            
+                    }          
+                    S3 = pd.Series(data).to_frame()
+                    df3 = S3.swapaxes("index","columns")
+                    frames.append(df3)
+                    
+        allDf = pd.concat(frames)
+        allDf.set_index('Day')
+        allDf.to_excel(fileName,sheet_name='Stern_Volmer_Data',index=False)
+       
+        if allDf.size >0:
+            message = "Data Saved to: " + fileName
+            msg = QMessageBox()
+            msg.setText(message)
+            msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            msg.exec_()             
+                
     def storeCurves(self,title):
         if self.reportSamples:
             curveData = {}
