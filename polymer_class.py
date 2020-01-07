@@ -10,68 +10,60 @@ import numpy as np
 import statsmodels.stats.api as sms
 from scipy import stats
 
+#class definition for polymer object
 class Polymer():
-    
+    #initialize properties of polymer object
     def __init__(self,polymerName):
+        #type of polymer 
         self.name = polymerName
-        
-        #alternatively could use a list instead 
-        #self.IntensityAir = list()
-        #self.LambdaAir = list() #wavelength arrays in nm
-        
-        #self.IntensityN2 = list()
-        #self.LambdaN2 = list() #wavelength arrays in nm
-        
-        #self.IntensityO2 = list()
-        #self.LambdaO2 = list() #wavelength arrays in nm
-        
+        #the curve data under different oxygen environment levels
         self.O2curve = {}
         self.N2curve = {}
         self.Aircurve = {}
-        
+        #search wavelength and corresponding intensity depending on dye 
         self.dyeWave = 0.0
         self.dyeInt = list()
         self.dyeInt0 = 0.0
         self.normalized = False
-        
+        #intensities at specified emission wavelength
         self.IN2 = {}
         self.IO2 = {}
         self.IAir = {}
-        
+        #initial values of intensities
         self.IN20 = {}
         self.IO20 = {}
         self.IAir0 = {}
-        
+        #sensitivity ratios
         self.IN2_Air = {}
         self.IN2_O2 = {}
-    
+        #array for time
         self.Time = list()
         
         self.Category = list()
         self.Dye = ""
-        
+        #normalized values
         self.normN2AirAvg = list()
         self.normN2AirSTD = list()
         
         self.normN2O2Avg = list()
         self.normN2O2STD = list()
-        
+        #average values
         self.IN2Avg = list()
         self.IAirAvg = list()
         self.IO2Avg = list()
         self.IN2_AirAvg = list()
         self.IN2_O2Avg = list()
-        
+        #standard deviations
         self.IN2Std = list()
         self.IAirStd = list()
         self.IO2Std = list()
         self.IN2_AirStd = list()
         self.IN2_O2Std = list()
-        
+        #blue light overlap fit values
         self.N2BlueFit = {}
         self.O2BlueFit = {}
         self.AirBlueFit = {}
-        
+        # R Squared values and error bars 
         self.RSquare = {}
         self.errorBarsAir = list()
         self.errorBarsN2 = list()
@@ -80,23 +72,26 @@ class Polymer():
         self.errorBarsN2O2 = list()
         self.errorBarsN2Airnorm = list()
         self.errorBarsN2O2norm = list()
-    
+   #set function to reset intensities 
     def setIntensities(self,IAir,IN2,IO2):
         self.IAir = IAir
         self.IN2 = IN2
         self.IO2 = IO2
+    #retrieve intensities
     def getIntensities(self,expType):
         if expType != 'temperature':
             return (self.IN2,self.IAir,self.IO2)
         else:
             return (self.IAir)
+    #update ratios 
     def updateRatios(self,expType,IN2,IAir,IO2):
         """
         returns (IN2_Air, IN2_O2)
         """
         IN2_Air = {}
         IN2_O2 = {}
-        
+        #compute the requred sensitivity ratios based on recorded intensities.  
+        #If statement checks the type of experiment
         if expType == 'photobleaching':
             for key in IN2:    
                 IN2_Air.update({key:list(np.array(IN2[key])/np.array(IAir[key]))}) 
@@ -111,18 +106,19 @@ class Polymer():
                     IN2_Air[key].update( {key2:(IN2[key][key2] / IAir[key][key2])})
                     IN2_O2[key].update( {key2:(IN2[key][key2] / IO2[key][key2])})
         return (IN2_Air,IN2_O2)
-    
+    #function to compute summary statstics
     def updateSumStats(self,expType,IN2={},IAir={},IO2={},IN2_Air={},IN2_O2={}):
         
-         
+        #initialize arrays
         AirIntensities = np.array([])
         O2Intensities = np.array([])
         N2Intensities = np.array([])
         N2_AirIntensities = np.array([])
         N2_O2Intensities = np.array([])
-        
+        #guide code based on experiment
         if expType == 'photobleaching':
             for key in IO2.keys():
+                #reinitialize at initial value
                 if AirIntensities.size==0:
                     AirIntensities = np.array(IAir[key])
                     O2Intensities = np.array(IO2[key])
@@ -135,7 +131,7 @@ class Polymer():
                     N2Intensities = np.vstack([N2Intensities,IN2[key]])
                     N2_AirIntensities = np.vstack([N2_AirIntensities,IN2_Air[key]])
                     N2_O2Intensities = np.vstack([N2_O2Intensities,IN2_O2[key]])
-                
+            #update average and standard deviation on each pass
             self.IN2Avg = list(np.mean(N2Intensities,axis=0))
             self.IAirAvg = list(np.mean(AirIntensities,axis=0))
             self.IO2Avg = list(np.mean(O2Intensities,axis=0))
@@ -149,6 +145,9 @@ class Polymer():
             self.IN2_O2Std = list(np.std(N2_O2Intensities,axis=0))
             
         elif expType == 'lifetime':
+            #slightly different alteration of previous code for lifetime experiment
+            
+            #initialize averages
             IN2Avg = np.zeros(2)
             IO2Avg = np.zeros(2)
             IAirAvg = np.zeros(2)
@@ -160,19 +159,21 @@ class Polymer():
             IAirStd = np.zeros(2)
             IN2_AirStd = np.zeros(2)
             IN2_O2Std = np.zeros(2) 
-            
+            #loop through all time points
             for dur in IO2.keys():
                 AirList = list()
                 N2List = list()
                 O2List = list()
                 N2AirList = list()
                 N2O2List = list()
+                #add values to lists
                 for samp in IO2[dur].keys():
                     AirList.append(IAir[dur][samp])
                     N2List.append(IN2[dur][samp])
                     O2List.append(IO2[dur][samp])
                     N2AirList.append(IN2_Air[dur][samp])
                     N2O2List.append(IN2_O2[dur][samp])
+                #remove unwanted delimeters from strings then compute means and standard deviations of replicates
                 if 'aged' == dur.strip() or 'Aged' == dur.strip():
                     IN2Avg[1] = np.mean(np.array(N2List))
                     IO2Avg[1] = np.mean(np.array(O2List))
@@ -197,7 +198,7 @@ class Polymer():
                     IAirStd[0] = (np.std(np.array(AirList)))
                     IN2_AirStd[0] = (np.std(np.array(N2AirList)))
                     IN2_O2Std[0] = (np.std(np.array(N2O2List)))     
-                    
+            #convert from numpy arrays back to lists        
             self.IN2Avg = list(IN2Avg)
             self.IO2Avg = list(IO2Avg)
             self.IAirAvg = list(IAirAvg)
@@ -209,7 +210,7 @@ class Polymer():
             self.IAirStd = list(IAirStd)
             self.IN2_AirStd = list(IN2_AirStd)
             self.IN2_O2Std = list(IN2_O2Std)
-        elif expType == 'temperature':
+        elif expType == 'temperature': #used in aggregation experiment data 
             for key in IAir.keys():
                 if AirIntensities.size==0:
                     AirIntensities = np.array(IAir[key])
@@ -235,7 +236,7 @@ class Polymer():
                 IN2_dict = {}
                 IO2_dict = {}
                 IAir_dict = {}
-                
+                #subtracts fit values from measured intensities
                 if expType == 'photobleaching':
                     lightArray = list()
                     for sampKey in self.IN2.keys():
@@ -245,11 +246,12 @@ class Polymer():
                         IN2new = np.array(self.IN2[sampKey]) - np.array(lightArray)
                         IO2new = np.array(self.IO2[sampKey]) - np.array(lightArray)
                         IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
-                        
+                        #if negative value occurs, which is physically impossible, replace with a near-zero value
+                        #if 0 is used, divide by zero errors will persist
                         IN2new[IN2new<=0] = 0.1
                         IO2new[IO2new<=0] = 0.1
                         IAirnew[IAirnew<=0] = 0.1
-                        
+                        #store values
                         IN2_dict.update({sampKey:list(IN2new)})
                         IO2_dict.update({sampKey:list(IO2new)})
                         IAir_dict.update({sampKey:list(IAirnew)})
@@ -258,10 +260,10 @@ class Polymer():
                         
                     return(IN2_dict,IAir_dict,IO2_dict)
                             
-                elif expType == 'lifetime':
+                elif expType == 'lifetime': #lifetime experiment spectrometer data subtraction
                     for durKey in self.IN2.keys():
                         for sampKey in self.IN2[durKey].keys():
-                            
+                            #similar logic as before with slightly different indexing
                             IN2new = self.IN2[durKey][sampKey] - self.O2BlueFit[durKey][sampKey]
                             IO2new = self.IO2[durKey][sampKey] - self.O2BlueFit[durKey][sampKey]
                             IAirnew = self.IAir[durKey][sampKey] - self.O2BlueFit[durKey][sampKey]
@@ -277,19 +279,16 @@ class Polymer():
                             IO2_dict.update({durKey:{sampKey:IO2new}})
                             IAir_dict.update({durKey:{sampKey:IAirnew}})
                             
-                            #self.IN2[durKey][sampKey] = IN2new
-                            #self.IO2[durKey][sampKey] = IO2new
-                            #self.IAir[durKey][sampKey] = IAirnew
                     return(IN2_dict,IAir_dict,IO2_dict)
                             
-                elif expType == 'temperature':
+                elif expType == 'temperature': #subtracts value from air environment only
                     lightArray = list()
                     for sampKey in self.IAir.keys():
                         for day in self.AirBlueFit[sampKey].keys():
                             lightArray.append(self.AirBlueFit[sampKey][day])
-
+                        #subtract the array of fit values
                         IAirnew = np.array(self.IAir[sampKey]) - np.array(lightArray)    
-                        
+                        #replace negative values with near zero quantity
                         IAirnew[IAirnew<=0] = 0.1
                         
                         IAir_dict.update({sampKey:list(IAirnew)})
@@ -298,7 +297,7 @@ class Polymer():
                         
                     return (IAir_dict)
             
-        elif method == 1 :
+        elif method == 1 : #subtracts day 0 fit values only 
             
             if self.O2BlueFit or self.AirBlueFit:
                 
@@ -345,9 +344,6 @@ class Polymer():
                             IO2_dict.update({durKey:{sampKey:IO2new}})
                             IAir_dict.update({durKey:{sampKey:IAirnew}})
                             
-                            #self.IN2[durKey][sampKey] = IN2new
-                            #self.IO2[durKey][sampKey] = IO2new
-                            #self.IAir[durKey][sampKey] = IAirnew
                     return(IN2_dict,IAir_dict,IO2_dict)
                 if expType == 'temperature':
                     
@@ -363,24 +359,15 @@ class Polymer():
                
                     return (IAir_dict)
         
-    def normalize(self,expType='photobleaching',IN2={},IAir={},IO2={}):
+    def normalize(self,expType='photobleaching',IN2={},IAir={},IO2={}): #code to normalize intensities by initial values  
         self.normalized = True
-        #IN2 = {}
-        #IAir = {}
-        #IO2 = {}
+
         if expType == 'photobleaching':
             for sampKey in IN2.keys():
                 
                 IN2[sampKey] = list(np.array(IN2[sampKey]) / IN2[sampKey][0])
                 IO2[sampKey] = list(np.array(IO2[sampKey]) / IO2[sampKey][0])
                 IAir[sampKey] = list(np.array(IAir[sampKey]) / IAir[sampKey][0])
-                
-                
-                #self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
-                #self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
-                #self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
-                #self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
-                #self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
                 
             return (IN2,IAir,IO2)
                 
@@ -393,12 +380,6 @@ class Polymer():
                 IO2[sampKey] = list(np.array(self.IO2[sampKey]) / IO2[sampKey][0])
                 IAir[sampKey] = list(np.array(self.IAir[sampKey]) / IAir[sampKey][0])
                 
-                
-                #self.IN2Avg = self.IN2Avg/self.IN2Avg[0]
-                #self.IO2Avg = self.IO2Avg/self.IO2Avg[0]
-                #self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
-                #self.IN2_AirAvg = self.IN2_AirAvg/self.IN2_AirAvg[0]
-                #self.IN2_O2Avg = self.IN2_O2Avg/self.IN2_O2Avg[0]
             return(IN2,IAir,IO2)
                 
         elif expType == 'temperature':  #fix this 
@@ -410,24 +391,12 @@ class Polymer():
             return(IAir)
                 #self.IAirAvg = self.IAirAvg/self.IAirAvg[0]
                 
-    def addErrorBars(self,errtype=1,expType='photobleaching'):
+    def addErrorBars(self,errtype=1,expType='photobleaching'): #computes various types of error bars 
         """
         1: 95% CI
         0: standard deviations
         """
-        
-        """
-        for i1,i2,i3,i4,i5 in zip(range(len(self.IAirAvg)),range(len(self.IO2Avg)),range(len(self.IN2Avg)),
-                         range(len(self.IN2_AirAvg)),range(len(self.IN2_O2Avg))):
-        """
             
-        """
-        sampMeanAir = self.IAirAvg[i1]
-        sampMeanO2 = self.IO2Avg[i2]
-        sampMeanN2 = self.IN2Avg[i3]
-        sampMeanN2Air = self.IN2_AirAvg[i4]
-        sampMeanN2O2 = self.IN2_O2Avg[i5]
-        """
         if expType != 'temperature':
             sampStdAir = np.array(self.IAirStd)
             sampStdO2 = np.array(self.IO2Std)
@@ -441,65 +410,28 @@ class Polymer():
                 df = n-1
                 alpha = 0.025
                 tval = stats.t.ppf(1-alpha,df)                
-        
-                #self.errorBarsAir.append(tval*sampStdAir/np.sqrt(n))
+
                 self.errorBarsAir = list(np.array(tval*sampStdAir/np.sqrt(n)))
-                
-                #self.errorBarsO2.append(tval*sampStdO2/np.sqrt(n))
+
                 self.errorBarsO2 = list(np.array(tval*sampStdO2/np.sqrt(n)))
-                
-                #self.errorBarsN2.append(tval*sampStdN2/np.sqrt(n))
+
                 self.errorBarsN2 = list(np.array(tval*sampStdN2/np.sqrt(n)))
                 
-                #propagation of error code 
-                #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdAir/np.sqrt(n))/self.IAirAvg,2)
-                #self.errorBarsN2Air = list(np.sqrt(expr))
-                
-                #normal error bars 
                 self.errorBarsN2Air = list(np.array(tval*sampStdN2Air/np.sqrt(n)))
                 
-                #propagation of error code 
-                #expr = np.power(np.array(tval*sampStdN2/np.sqrt(n))/self.IN2Avg,2) + np.power(np.array(tval*sampStdO2/np.sqrt(n))/self.IO2Avg,2)
-                #self.errorBarsN2O2 = list(np.sqrt(expr))
-                
-                #normal error bars 
                 self.errorBarsN2O2 = list(np.array(tval*sampStdN2O2/np.sqrt(n)))
                 
                 
             elif errtype ==0: #standard deviation
                 
-                #leftAir = sampMeanAir - sampStdAir
-                #rightAir = sampMeanAir + sampStdAir
-                #CIAir =(leftAir,rightAir)
-                
-                #self.errorBarsAir.append(CIAir)
                 self.errorBarsAir = list(sampStdAir)
                 
-                #leftO2 = sampMeanO2 - sampStdO2
-                #rightO2 = sampMeanO2 +sampStdO2
-                #CIO2 =(leftO2,rightO2)
-                
-                #self.errorBarsO2.append(CIO2)
                 self.errorBarsO2 = list(sampStdO2)
                 
-                #leftN2 = sampMeanN2 -sampStdN2
-                #rightN2 = sampMeanN2 + sampStdN2
-                #CIN2 =(leftN2,rightN2)
-                
-                #self.errorBarsN2.append(CIN2)
                 self.errorBarsN2 =list(sampStdN2)
-                
-                #leftN2Air = sampMeanN2Air - sampStdN2Air
-                #rightN2Air = sampMeanN2Air + sampStdN2Air
-                #CIN2Air =(leftN2Air,rightN2Air)
                 
                 self.errorBarsN2Air = list(sampStdN2Air)
                 
-                #leftN2O2 = sampMeanN2O2 -  sampStdN2O2
-                #rightN2O2 = sampMeanN2O2 +  sampStdN2O2
-                #CIN2O2 =(leftN2O2,rightN2O2)
-                
-                #self.errorBarsN2O2.append(CIN2O2)
                 self.errorBarsN2O2 = list(sampStdN2O2)
                 
         else:
@@ -508,7 +440,9 @@ class Polymer():
             if errtype ==1:
                 n = len(self.Category)
                 df = n-1
+                #set alpha for statistics
                 alpha = 0.05
+                #use a studentized t-test to compute 95% CI
                 tval = stats.t.ppf(1-alpha,df)
                 
                 self.errorBarsAir = list(np.array(tval*sampStdAir/np.sqrt(n)))

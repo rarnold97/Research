@@ -51,7 +51,7 @@ def poly6(x,a,b,c,d,e,f,g):
 
 def poly7(x,a,b,c,d,e,f,g,h):
     return a*x + b*np.power(x,2) + c * np.power(x,3) + d*np.power(x,4) + e*np.power(x,5) + f*np.power(x,6) + g*np.power(x,7) + h
-
+#apply curve optimization using scipy
 def fitCurve(xdata,ydata,fitType):
     #xdata = np.linspace(xRange[0],xRange[1],1000)
     
@@ -92,7 +92,7 @@ def fitCurve(xdata,ydata,fitType):
         param, param_cov = curve_fit(Hubert,xdata,ydata)
         
     return (param,param_cov)
-
+#appy fit to a given data range
 def applyFit(xdata,param,fitType):
     
     if "expSingle" in fitType:

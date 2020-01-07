@@ -41,7 +41,7 @@ from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QListWidget
 from PyQt5.QtWidgets import QAbstractItemView
 from PyQt5.QtWidgets import QInputDialog
-        
+
 
 class Main(QMainWindow, Ui_MainWindow):
     #put signals and slots here 
@@ -74,6 +74,8 @@ class Main(QMainWindow, Ui_MainWindow):
         self.errorBar = 1 # add ci error bars 
         
         self.reportSamples = {}
+        
+        #initialize all GUI variables and objects
         #define polynomial degree widget
         self.QList = QListWidget()
         
@@ -294,11 +296,6 @@ class Main(QMainWindow, Ui_MainWindow):
             elif self.expKey == 'temperature':
                 self.figKey = polyName + '&' + sample + '&' + daySelected
                 self.changefig(self.figKey,fig)
-                
-            #self.figKey = polyName + ' '+sample +' '+ daySelected
-            #self.changefig(self.figKey,fig)
-            
-            
             
     def FitData(self):
         if self.expKey != 'temperature':
@@ -412,10 +409,6 @@ class Main(QMainWindow, Ui_MainWindow):
                     self.selectedPoly.RSquare[self.selectedSample].update({self.selectedDay:R})
                 else:
                     self.selectedPoly.RSquare.update({self.selectedSample:{self.selectedDay:R}})
-            
-        #start generating plot data here 
-        #going to fit based on the air curve data
-        #yfitted = fit.applyFit(self.O2FitRange[colHeadersO2[0]],self.paramO2,self.fitType)
         
         if hasattr(self,'figKey'):
             fig = self.fig_dict[self.figKey]
@@ -425,14 +418,12 @@ class Main(QMainWindow, Ui_MainWindow):
                     ax.lines.remove(line)
                     break
             self.saveBlueOverlap()
-            #ax.plot(self.O2FitRange[colHeadersO2[0]],yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
             if self.expKey != 'temperature':
                 ax.plot(self.xfitO2Waves,yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
             else:
                 ax.plot(self.xfitAirWaves,yfitted,'--',color='green',label='Extrapolated Blue Light Curve')
             
             ax.legend(loc='upper right')
-            #self.fig_dict[self.figKey] = fig
             self.changefig(self.figKey,fig)
         
         
@@ -500,13 +491,6 @@ class Main(QMainWindow, Ui_MainWindow):
         if hasattr(self,'canvas'):
             self.rmpl()
         self.addmpl(self.fig_dict[key])
-        
-    """
-    def addfig(self, name, fig):
-        self.fig_dict[name] = fig
-        listItem = QTreeWidgetItem(self.sample_treeWidget,[name])
-        self.sample_treeWidget.addTopLevelItem(listItem)
-    """
         
     def setTreeCols(self,expType):
         if "Aging Experiment" in expType:
@@ -605,7 +589,6 @@ class Main(QMainWindow, Ui_MainWindow):
             self.polymerObjects =  SE.loadExcelData(self.xlFileName,self.expKey,self.dye,0)  
         #*******************************************************************************
         
-        #print('Data Successfully Loaded')
         msg = QMessageBox()
         msg.setText("Data Successfully Loaded")
         msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
@@ -799,38 +782,22 @@ class Main(QMainWindow, Ui_MainWindow):
                         Poly.updateSumStats(self.expKey,IAir=IAirnorm)
                     elif self.normalized ==1:
                         Poly.updateSumStats(self.expKey,IAir = Poly.IAir)
-            #********************************************************************
-            """
-            if self.normalized ==0:
-                #Poly.normalize(self.expKey)
-                if self.expKey != 'temperature':
-                    (IN2norm,IAirnorm,IO2norm) = Poly.normalize(self.expKey)
-                    (IN2Airnorm,IN2O2norm) = Poly.updateRatios(self.expKey,IN2norm,IAirnorm,IO2norm)
-                    Poly.updateSumStats(self.expKey,IN2norm,IAirnorm,IO2norm,IN2Airnorm,IN2O2norm)
-                else:
-                    (IAirnorm) = Poly.normalize(self.expKey)
-                    print(IAirnorm)
-                    Poly.updateSumStats(self.expKey,IAir=IAirnorm)
-                    
-            """    
+            #********************************************************************  
             Poly.addErrorBars(errtype=self.errorBar,expType = self.expKey)
                 
             if self.expKey == 'photobleaching':
-                #plt.plot(Poly.Time,Poly.IN2_AirAvg)
                 if sensitivity == 0:
                     ax.errorbar(Poly.Time,Poly.IN2_AirAvg,yerr = Poly.errorBarsN2Air,capsize=6,marker='.',label = key)
                 elif sensitivity == 1:
                     ax.errorbar(Poly.Time,Poly.IN2_O2Avg,yerr = Poly.errorBarsN2O2,capsize=6,marker='.',label = key)
                 
             elif self.expKey == 'lifetime':
-                #do stuff here 
                 if sensitivity ==0:
                     ax.errorbar(['Unaged','Aged'],Poly.IN2_AirAvg,yerr = Poly.errorBarsN2Air,capsize=6,marker='.',label=key)
                 elif sensitivity ==1:
                     ax.errorbar(['Unaged','Aged'],Poly.IN2_O2Avg,yerr = Poly.errorBarsN2O2,capsize=6,marker='.',label=key)
                     
             elif self.expKey == 'temperature':
-                #do stuff here 
                 ax.errorbar(Poly.Time,Poly.IAirAvg,yerr = Poly.errorBarsAir,capsize=6,marker='.',label=key)
               
         ax.legend(loc='upper right')
@@ -845,7 +812,6 @@ class Main(QMainWindow, Ui_MainWindow):
                 
                 if self.expKey != 'temperature':
                     fig1 = plt.figure(1)
-                    #fig1.set_canvas(plt.gcf().canvas)
                     self.formatPlot(fig1,'Time (Days)','Intensity Ratio (Photon Counts)',
                                     'Sensitivity (IN2/Air)',sensitivity=0)
     
@@ -855,7 +821,6 @@ class Main(QMainWindow, Ui_MainWindow):
                     fig2 = plt.figure(2)
                     self.formatPlot(fig2,'Time (Days)','Intensity Ratio (Photon Counts)',
                                     'Sensitivity (IN2/IO2)',sensitivity=1)
-                    #fig2.set_canvas(plt.gcf().canvas)
                     
                     filename2 = self.outputDir + '/'+'N2_O2'+'_'+self.expKey+".pdf"
                     fig2.savefig(filename2,bbox_inches='tight')
@@ -869,8 +834,6 @@ class Main(QMainWindow, Ui_MainWindow):
                 self.saveR2()
             else:
                 QMessageBox("Make Sure to load data before generating report data.")
-                
-        #importlib.reload(plt)
         
     def setR2file(self,item):
         self.R2file = self.outputDir +item+".xlsx"
@@ -888,7 +851,6 @@ class Main(QMainWindow, Ui_MainWindow):
         text,ok = QInputDialog.getText(self,'Text Input Dialog','Enter Spreadsheet name:')
         if ok:
             if self.polymerObjects:
-                #self.storeBlueVals(text)
                 self.printIntData(text)
             else:
                 QMessageBox("Please Load Data before attempting to saving data.")
@@ -905,7 +867,6 @@ class Main(QMainWindow, Ui_MainWindow):
             
     def printIntData(self,expTitle):
         fileName = expTitle + '.xlsx'
-        #writer = pd.ExcelWriter(fileName,engine='xlsxwriter')
         frames = []
         for polymerName in self.reportSamples.keys():
             poly = self.reportSamples[polymerName]
@@ -976,7 +937,6 @@ class Main(QMainWindow, Ui_MainWindow):
         text,ok = QInputDialog.getText(self,'Text Input Dialog','Enter Spreadsheet name:')
         if ok:
             if self.polymerObjects:
-                #self.storeBlueVals(text)
                 self.printVolmer(text)
             else:
                 QMessageBox("Please Load Data before attempting to saving data.")        
@@ -1105,31 +1065,9 @@ class Main(QMainWindow, Ui_MainWindow):
                 QMessageBox("Please Load Data before attempting to saving data.")        
 if __name__ == "__main__":
     import sys
-    #from PyQt5 import QtGui
-    """
-    from PyQt5.QtWidgets import QApplication
-    from PyQt5.QtWidgets import QTreeWidgetItem
-    from PyQt5.QtWidgets import QFileDialog
-    from PyQt5.QtWidgets import QMessageBox
-    from PyQt5.QtWidgets import QListWidget
-    """
-    
-    #test the plot widget in the gui module
-    """
-    fig1 = Figure()
-    ax1f1 = fig1.add_subplot(111)
-    ax1f1.plot([1,2,3,4,5])
-    
-    fig2 = Figure()
-    ax1f2 = fig2.add_subplot(111)
-    ax1f2.plot([1,4,9,16,25])
-    """
     
     app= QApplication(sys.argv)
     main = Main()
-    #main.addfig('test plot 1',fig1)
-    #main.addfig('test plot 2',fig2)
-    #main.addmpl(fig1)
     main.show()
     app.exec_()
 
