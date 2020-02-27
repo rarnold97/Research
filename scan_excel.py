@@ -1,6 +1,3 @@
-''' TO DO:
-    Add another extraction layer to the intensity values, seemes to be one level to high
-'''
 import pandas as pd 
 import numpy as np 
 import matplotlib.pyplot as plt  
@@ -27,19 +24,7 @@ def Remove(duplicate):
             final_list.append(num) 
     return final_list
 
-"""
-def uniqueDict(dict,key,obj):
-    if key not in dict.keys():
-        dict[key] = obj
-        return dict
-    else:
-        return dict
-"""    
-
-#fileName = 'Lifetime Spectrometer Data Aged and Unaged.xlsx'
-#fileName = 'Photobleaching_test_refined.xlsx'
-#fileName = 'Photobleaching_test_refined.xlsm'
-
+#code that imports data in spreadsheet format
 def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleaching', dye_choice='Pd',customWave=0):
     """
     filename is the name of the spreadsheet, key is the value for the experiment type, dye_choice is the dye to be examined
@@ -71,21 +56,15 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             
             newShtNames.append(sht)
             
-            #df = pd.read_excel(xl,sheet_name = 'Aged',header=[1,2,3])
             df = pd.read_excel(xl,sheet_name = sht,header=[1,2,3])
             
-            #df.reset_index(inplace = True,drop=True)
             df.reset_index(inplace=True,)
             
             colNames = df.columns.values.tolist()
             
-            #badLabel = list(colNames[0])
-            
             tempLabel = list(colNames[1])
             
             correctLabel = list(colNames[2])[-1]
-            
-            #tempLabel[-1] = 'λ(nm)'
             
             tempLabel[-1] = correctLabel
             
@@ -131,14 +110,12 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
     
     Scaffolds_Temp = {}
     #buffer variable to evaulate wheter we are on the same polymer or not 
-    #samePoly = False
     Air0 = {}
     N20 = {}
     O20 = {}
     
     for shtData, shtName in zip(allDataFrames,newShtNames):
         
-        #Scaffolds_Lifetime = list()
         
         allColNames = shtData.columns.values.tolist()
         
@@ -186,19 +163,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             else:
                 scaffold = plymr.Polymer(curPoly)
                 Scaffolds_Photo[curPoly] = scaffold
-                
-            """
-            for polyType in Scaffolds_Photo:
-                if curPoly in polyType.name:
-                    scaffold = polyType
-                    samePoly = True 
-                    break
-                else:
-                    samePoly = False
-            
-            if not samePoly:
-                scaffold = plymr.Polymer(basePoly[-1])
-            """    
             
             scaffold.Aircurve.update({shtName:{}})
             scaffold.O2curve.update({shtName:{}})
@@ -210,12 +174,10 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             scaffold.IAir0.update({shtName:0})
             scaffold.IN20.update({shtName:0})
             scaffold.IO20.update({shtName:0})
-            #sampleData.update({fullPolyname})
             
             for day in allTimes:
                 
                 scaffold.Time.append(day)
-                #scaffold.Time.append(day.strip())
                 scaffData = shtData[day]
                 
                 
@@ -228,7 +190,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                             AirCurveData.update({day : scaffData[gas]})
                         
                             if ('lambda' in var or 'λ(nm)' in var):
-                                #scaffold.LambdaAir.append( scaffData[gas][var].values )
                                 
                                 Filter = scaffData[gas][var] >= srchWave
                                 filterData = scaffData[gas].where(Filter)
@@ -240,15 +201,12 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 if day == allTimes[0]:
                                     scaffold.IAir0[shtName] = dataPair[-1]
                                 
-                            #elif ('I' in var or 'Intensity' in var):
-                                #scaffold.IntensityAir.append(scaffData[gas][var].values)
                             
                         elif ('N2' in gas or 'n2' in gas):
                             
                             N2CurveData.update({day:scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
-                                #scaffold.LambdaN2.append(scaffData[gas][var].values)
                                 
                                 Filter = scaffData[gas][var] >= srchWave
                                 filterData = scaffData[gas].where(Filter)
@@ -260,15 +218,11 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 if day == allTimes[0]:
                                     scaffold.IN20[shtName] = dataPair[-1]
                                 
-                            #elif ('I' in var or 'Intensity' in var):                    
-                                #scaffold.IntensityN2.append(scaffData[gas][var].values)
-                                
                         elif('O2'in gas or 'o2' in gas):
                             
                             O2CurveData.update({day:scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
-                                #scaffold.LambdaO2.append(scaffData[gas][var].values)
                                 
                                 Filter = scaffData[gas][var] >= srchWave
                                 filterData = scaffData[gas].where(Filter)
@@ -279,34 +233,21 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 
                                 if day == allTimes[0]:
                                     scaffold.IO20[shtName] = dataPair[-1]
-                                
-                            #elif ('I' in var or 'Intensity' in var):        
-                                #scaffold.IntensityO2.append(scaffData[gas][var].values)
-                                
-        #scaffold.updateRatios()
-        
         
             scaffold.Aircurve[fullPolyName] = AirCurveData
             scaffold.O2curve[fullPolyName] = O2CurveData
             scaffold.N2curve[fullPolyName] = N2CurveData
             
-            #########################################################
-            #consider removing this line of code  might cause issues#
-            #########################################################
             scaffold.Time = Remove(scaffold.Time)
-            #scaffold.updateRatios(key)
-            #scaffold.updateSumStats(key)
             Scaffolds_Photo[curPoly] = scaffold
             
             
                 
                 
         elif (analysisType[key]==2): #lifetime experiment
-            #scaff stands for scaffold.  Some polymers may differ by dye composition, so scaffold is the correct unique term 
             
             for scaffName in allPolyNames:
                 
-                #baseName = scaffName.split(' ')[0] + '_' + shtName
                 baseName = scaffName.split(' ')[0] 
                 
                 if baseName in expCollLifetime.keys():
@@ -324,7 +265,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                         scaffold.IN2.update({each_sht:{}})
                         scaffold.IO2.update({each_sht:{}})
     
-                #scaffold = plymr.Polymer(scaffName)
                 scaffold.Aircurve[shtName].update({scaffName.strip():{}})
                 scaffold.O2curve[shtName].update({scaffName.strip():{}})
                 scaffold.N2curve[shtName].update({scaffName.strip():{}})
@@ -347,7 +287,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                             scaffold.Aircurve[shtName.strip()].update({scaffName.strip():scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
-                                #scaffold.LambdaAir.append( scaffData[gas][var].values )
                                 
                                 Filter = scaffData[gas][var] >= srchWave
                                 filterData = scaffData[gas].where(Filter)
@@ -365,7 +304,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                             scaffold.N2curve[shtName.strip()].update({scaffName.strip():scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
-                                #scaffold.LambdaN2.append(scaffData[gas][var].values)
                                 
                                 Filter = scaffData[gas][var] >= srchWave
                                 filterData = scaffData[gas].where(Filter)
@@ -383,7 +321,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                             scaffold.O2curve[shtName].update({scaffName.strip():scaffData[gas]})
                             
                             if ('lambda' in var or 'λ(nm)' in var):
-                                #scaffold.LambdaO2.append(scaffData[gas][var].values)
                                 
                                 Filter = scaffData[gas][var] >= srchWave
                                 filterData = scaffData[gas].where(Filter)
@@ -396,15 +333,8 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                     O20.update({scaffName:dataPair[-1]})
                                     scaffold.IO20[scaffName.strip()] = dataPair[-1]
                                 
-                                
-                #scaffold.Aircurve[scaffName] = AirCurveData
-                #scaffold.O2curve[scaffName] = O2CurveData
-                #scaffold.N2curve[scaffName] = N2CurveData
-                #scaffold.updateRatios()
-                
-                #Scaffolds_Lifetime.append(scaffold)
         
-        elif (analysisType[key]==3): #temperature stuff
+        elif (analysisType[key]==3): #aggregation data
             curPoly = basePoly[-1]
             fullPolyName = shtName
             
@@ -418,12 +348,10 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
             scaffold.Category.append(fullPolyName)
             scaffold.IAir.update({shtName:list()})
             scaffold.IAir0.update({shtName:0})
-            #sampleData.update({fullPolyname})
             
             for day in allTimes:
                 
                 scaffold.Time.append(day)
-                #scaffold.Time.append(day.strip())
                 scaffData = shtData[day]
                 
                 
@@ -436,7 +364,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                             AirCurveData.update({day : scaffData[gas]})
                         
                             if ('lambda' in var or 'λ(nm)'in var or 'λ'in var):
-                                #scaffold.LambdaAir.append( scaffData[gas][var].values )
                                 
                                 Filter = scaffData[gas][var] >= srchWave
                                 filterData = scaffData[gas].where(Filter)
@@ -448,8 +375,6 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                                 if day == allTimes[0]:
                                     scaffold.IAir0[shtName] = dataPair[-1]
                                 
-                            #elif ('I' in var or 'Intensity' in var):
-                                #scaffold.IntensityAir.append(scaffData[gas][var].values)
             
             scaffold.Aircurve[fullPolyName] = AirCurveData
             
@@ -460,34 +385,15 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
         if (analysisType[key] == 1):
             
             if(shtName == newShtNames[-1]):
-                #for key in Scaffolds_Photo.keys():
-                    #Scaffolds_Photo[key].updateRatios()
-                    #Scaffolds_Photo[key].updateSumStats()
-                return Scaffolds_Photo
-            
-            #Scaffolds.append(scaffold)       
+                return Scaffolds_Photo  
     
         elif (analysisType[key] == 2):
             #collect the lifetime version of the data 
-            #expCollLifetime[shtName] = Scaffolds_Lifetime
             if (shtName == newShtNames[-1]):
                 for sampKey in expCollLifetime.keys():
                     polySample = expCollLifetime[sampKey]
                     polySample.Category = Remove(polySample.Category)
                     expCollLifetime[sampKey] = polySample
-                    """
-                    if 'unaged' not in key or 'Unaged' not in key:
-                        polySample = expCollLifetime[key]
-                        polySample.IAir0.update(Air0)
-                        polySample.IN20.update(N20)
-                        polySample.IO20.update(O20)
-                        expCollLifetime[key] = polySample
-                    """
-                    
-                    #***************************************
-                    #expCollLifetime[sampKey].updateRatios(key)
-                    #expCollLifetime[sampKey].updateSumStats(key)
-                    #***************************************
                 return expCollLifetime
         
         elif (analysisType[key] == 3):
@@ -496,17 +402,5 @@ def loadExcelData(fileName='Photobleaching_test_refined.xlsm', key='photobleachi
                 return Scaffolds_Temp
                 print('hello')
         
-        
-        
-        
-        #df.rename(columns={badLabel[0]:tempLabel[0],badLabel[1]:tempLabel[1]}, inplace = True)
-        #df4 = df3.rename(columns={badLabel[2]:tempLabel[2]})
-        
-        
-        #for sht in sheetNames:
-        #    if sht not in badNames:  
-        #        df = pd.read_excel(xl,sheet_name = sht,header = 0)
-    
-    
 if __name__=='__main__':
     dic = loadExcelData()    
